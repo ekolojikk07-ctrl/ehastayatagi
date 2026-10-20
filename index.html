@@ -12,8 +12,9 @@
     <!-- Firebase SDK (Modular v10 CDN) -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, collection, getDocs, addDoc, deleteDoc, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getFirestore, collection, getDocs, addDoc, deleteDoc, doc, updateDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
+        // BURAYA KENDİ FİREBASE BİLGİLERİNİZİ YAPIŞTIRIN
         const firebaseConfig = {
           apiKey: "AIzaSyA9nEtDPBTUYoSAJJFrOx39PP-L9bbRC6Q",
           authDomain: "eyataktakip.firebaseapp.com",
@@ -27,6 +28,7 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
+        // Global fonksiyonlar için window nesnesine bağlıyoruz
         window.db = db;
         window.collection = collection;
         window.getDocs = getDocs;
@@ -35,6 +37,7 @@
         window.doc = doc;
         window.updateDoc = updateDoc;
 
+        // Sayfa yüklendiğinde verileri çek
         window.addEventListener('DOMContentLoaded', () => {
             initializeAppUI();
         });
@@ -42,16 +45,69 @@
 
     <style>
        @media print {
-            body { background: white !important; color: black !important; margin: 0 !important; padding: 0 !important; }
-            header, .no-print, button, nav, .fixed > div > div:first-child { display: none !important; }
-            #reportModal { display: block !important; position: absolute !important; top: 0 !important; left: 0 !important; width: 100% !important; height: auto !important; background: white !important; z-index: 9999 !important; padding: 0 !important; margin: 0 !important; }
-            #reportModal > div { max-width: 100% !important; width: 100% !important; max-height: none !important; overflow: visible !important; box-shadow: none !important; border: none !important; padding: 0 !important; margin: 0 !important; }
-            #printableArea, #reportTitleMain, #reportDate { display: block !important; visibility: visible !important; color: black !important; }
+            /* Sayfa genel ayarları */
+            body { 
+                background: white !important; 
+                color: black !important; 
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+
+            /* Yazdırılmayacak menü, buton ve arayüz elemanlarını gizle */
+            header, .no-print, button, nav, .fixed > div > div:first-child { 
+                display: none !important; 
+            }
+
+            /* Rapor Modal penceresini tam sayfa yazdırılabilir hale getir */
+            #reportModal { 
+                display: block !important; 
+                position: absolute !important; 
+                top: 0 !important; 
+                left: 0 !important; 
+                width: 100% !important; 
+                height: auto !important; 
+                background: white !important; 
+                z-index: 9999 !important;
+                padding: 0 !important;
+                margin: 0 !important;
+            }
+
+            /* Modal içerik konteynerini sınırlamalardan kurtar */
+            #reportModal > div { 
+                max-width: 100% !important; 
+                width: 100% !important; 
+                max-height: none !important; 
+                overflow: visible !important; 
+                box-shadow: none !important; 
+                border: none !important; 
+                padding: 0 !important; 
+                margin: 0 !important; 
+            }
+
+            /* Rapor başlığı, tarih ve yazdırılacak alanı kesin olarak görünür kıl */
+            #printableArea, #reportTitleMain, #reportDate { 
+                display: block !important; 
+                visibility: visible !important; 
+                color: black !important; 
+            }
+
+            /* Sadece aktif olan rapor bölümlerini yazdır */
             .report-section { display: none !important; }
             .report-section.active-report { display: block !important; }
-            table { width: 100% !important; border-collapse: collapse !important; page-break-inside: auto; }
+
+            /* Çıktıda tabloların düzgün ve okunaklı çıkması için */
+            table { 
+                width: 100% !important; 
+                border-collapse: collapse !important; 
+                page-break-inside: auto;
+            }
             tr { page-break-inside: avoid; page-break-after: auto; }
-            th, td { border: 1px solid #cbd5e1 !important; padding: 6px 8px !important; font-size: 11px !important; color: black !important; }
+            th, td { 
+                border: 1px solid #cbd5e1 !important; 
+                padding: 6px 8px !important; 
+                font-size: 11px !important; 
+                color: black !important;
+            }
         }
     </style>
 </head>
@@ -286,7 +342,7 @@
 
     <!-- MODAL: YATAK EKLE -->
     <div id="inventoryModal" class="fixed inset-0 bg-black/50 hidden z-50 flex items-center justify-center p-3 sm:p-4">
-        <div class="bg-white rounded-2xl max-w-md w-full p-4 sm:p-6 shadow-xl max-h-[90vh] overflow-y-auto">
+        <div class="bg-white rounded-2xl max-w-md w-full p-4 sm:p-6 shadow-xl">
             <div class="flex justify-between items-center mb-4"><h3 class="font-bold text-gray-800">Envantere Yeni Yatak Ekle</h3><button onclick="closeModal('inventoryModal')"><i class="fa-solid fa-xmark"></i></button></div>
             <form onsubmit="handleInventorySubmit(event)" class="space-y-3">
                 <div><label class="text-xs font-medium text-gray-600">Seri Numarası *</label><input type="text" id="invSerialNo" required class="w-full px-3 py-2 border rounded-lg text-sm"></div>
@@ -298,16 +354,6 @@
                         <option value="İlçe Dışı Transferde">İlçe Dışı Transferde</option>
                         <option value="Arızalı">Arızalı</option>
                     </select>
-                </div>
-                <!-- Tutanak Yükleme Alanı -->
-                <div class="mt-2">
-                    <label class="text-xs font-medium text-gray-600 block mb-1">
-                        <i class="fa-solid fa-file-contract mr-1"></i> Transfer Tutanağı Görseli
-                    </label>
-                    <input type="file" id="invTutanakFile" accept="image/*" onchange="previewTutanak(event, 'tutanakPreview')" class="w-full text-xs text-gray-500 border rounded-lg p-1.5 file:mr-2 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-xs file:bg-teal-50 file:text-teal-700 hover:file:bg-teal-100">
-                    <div id="tutanakPreview" class="mt-2 hidden">
-                        <img src="" alt="Önizleme" class="h-24 w-auto rounded border shadow-sm object-cover">
-                    </div>
                 </div>
                 <div class="flex justify-end space-x-2 pt-2"><button type="submit" class="px-4 py-2 bg-teal-600 text-white rounded-lg text-sm">Kaydet</button></div>
             </form>
@@ -394,12 +440,12 @@
 
     <!-- MODAL: YATAK ENVANTERİ DÜZENLE -->
     <div id="editInventoryModal" class="fixed inset-0 bg-black/50 hidden z-50 flex items-center justify-center p-3 sm:p-4">
-        <div class="bg-white rounded-2xl max-w-md w-full p-4 sm:p-6 shadow-xl max-h-[90vh] overflow-y-auto">
+        <div class="bg-white rounded-2xl max-w-md w-full p-4 sm:p-6 shadow-xl">
             <div class="flex justify-between items-center mb-4"><h3 class="font-bold text-gray-800">Yatak Bilgilerini Düzenle</h3><button onclick="closeModal('editInventoryModal')"><i class="fa-solid fa-xmark"></i></button></div>
             <form onsubmit="handleEditInventorySubmit(event)" class="space-y-3">
                 <input type="hidden" id="editInvId">
                 <div><label class="text-xs font-medium text-gray-600">Seri Numarası *</label><input type="text" id="editInvSerialNo" required class="w-full px-3 py-2 border rounded-lg text-sm"></div>
-                <div><label class="text-xs font-medium text-gray-600">Model / Not</label><input type="text" id="editInvModel" class="w-full px-3 py-2 border rounded-lg text-sm"></div>
+                <div><label class="text-xs font-medium text-gray-600">Model</label><input type="text" id="editInvModel" class="w-full px-3 py-2 border rounded-lg text-sm"></div>
                 <div>
                     <label class="text-xs font-medium text-gray-600">Durum *</label>
                     <select id="editInvStatus" class="w-full px-3 py-2 border rounded-lg text-sm">
@@ -409,441 +455,335 @@
                         <option value="Arızalı">Arızalı</option>
                     </select>
                 </div>
-                <!-- Tutanak Güncelleme Alanı -->
-                <div class="mt-2">
-                    <label class="text-xs font-medium text-gray-600 block mb-1">
-                        <i class="fa-solid fa-file-contract mr-1"></i> Transfer Tutanağı Görseli
-                    </label>
-                    <input type="file" id="editInvTutanakFile" accept="image/*" onchange="previewTutanak(event, 'editTutanakPreview')" class="w-full text-xs text-gray-500 border rounded-lg p-1.5 file:mr-2 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-xs file:bg-teal-50 file:text-teal-700 hover:file:bg-teal-100">
-                    <div id="editTutanakPreview" class="mt-2 hidden">
-                        <img src="" alt="Önizleme" class="h-24 w-auto rounded border shadow-sm object-cover">
-                    </div>
-                </div>
-                <div class="flex justify-end space-x-2 pt-2"><button type="submit" class="px-4 py-2 bg-teal-600 text-white rounded-lg text-sm">Güncelle</button></div>
+                <div class="flex justify-end space-x-2 pt-2"><button type="submit" class="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm">Değişiklikleri Kaydet</button></div>
             </form>
         </div>
     </div>
 
-    <!-- JavaScript Uygulama Mantığı -->
-    <script>
-        let allBeds = [];
-        let allPatients = [];
-        let allApplications = [];
-        let allArchive = [];
+    <!-- MODAL: BAŞVURU DÜZENLE -->
+    <div id="editAppModal" class="fixed inset-0 bg-black/50 hidden z-50 flex items-center justify-center p-3 sm:p-4">
+        <div class="bg-white rounded-2xl max-w-lg w-full p-4 sm:p-6 shadow-xl max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-4"><h3 class="font-bold text-gray-800">Başvuru Bilgilerini Düzenle</h3><button onclick="closeModal('editAppModal')"><i class="fa-solid fa-xmark"></i></button></div>
+            <form onsubmit="handleEditAppSubmit(event)" class="space-y-3">
+                <input type="hidden" id="editAppId">
+                <div class="grid grid-cols-2 gap-2">
+                    <div><label class="text-xs">Hasta Adı *</label><input type="text" id="editAppName" required class="w-full px-3 py-2 border rounded-lg text-sm"></div>
+                    <div><label class="text-xs">TC No *</label><input type="text" id="editAppTc" maxlength="11" required class="w-full px-3 py-2 border rounded-lg text-sm"></div>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div><label class="text-xs">Telefon *</label><input type="text" id="editAppPhone" required class="w-full px-3 py-2 border rounded-lg text-sm"></div>
+                    <div><label class="text-xs">Başvuru Tarihi *</label><input type="date" id="editAppDate" required class="w-full px-3 py-2 border rounded-lg text-sm"></div>
+                </div>
+                <div><label class="text-xs">Adres *</label><textarea id="editAppAddress" required rows="2" class="w-full px-3 py-2 border rounded-lg text-sm"></textarea></div>
+                <div><label class="text-xs">Notlar</label><input type="text" id="editAppNotes" class="w-full px-3 py-2 border rounded-lg text-sm"></div>
+                <div class="flex justify-end pt-2"><button type="submit" class="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm">Değişiklikleri Kaydet</button></div>
+            </form>
+        </div>
+    </div>
 
-        let currentInventoryFilter = 'all';
-        let currentReportType = 'all';
+    <!-- JAVASCRIPT / FİREBASE İŞLEMLERİ -->
+    <script>
+        let inventory = [], activePatients = [], applications = [], archive = [];
+        let currentInventoryFilter = 'all', currentReportType = 'all';
 
         async function initializeAppUI() {
-            await loadAllData();
-            const today = new Date().toISOString().split('T')[0];
-            if(document.getElementById('appDate')) document.getElementById('appDate').value = today;
-            if(document.getElementById('approveDeliveryDate')) document.getElementById('approveDeliveryDate').value = today;
-            if(document.getElementById('returnDate')) document.getElementById('returnDate').value = today;
+            document.getElementById('appDate').valueAsDate = new Date();
+            document.getElementById('approveDeliveryDate').valueAsDate = new Date();
+            document.getElementById('returnDate').valueAsDate = new Date();
+            await loadAllDataFromFirebase();
         }
 
-        async function loadAllData() {
+        async function loadAllDataFromFirebase() {
             try {
-                const bedsSnapshot = await window.getDocs(window.collection(window.db, "beds"));
-                allBeds = [];
-                bedsSnapshot.forEach(doc => { allBeds.push({ id: doc.id, ...doc.data() }); });
+                // Envanter
+                let invSnap = await getDocs(collection(window.db, "inventory"));
+                inventory = [];
+                invSnap.forEach(d => inventory.push({ id: d.id, ...d.data() }));
 
-                const patientsSnapshot = await window.getDocs(window.collection(window.db, "patients"));
-                allPatients = [];
-                patientsSnapshot.forEach(doc => { allPatients.push({ id: doc.id, ...doc.data() }); });
+                // Aktif Hastalar
+                let actSnap = await getDocs(collection(window.db, "activePatients"));
+                activePatients = [];
+                actSnap.forEach(d => activePatients.push({ id: d.id, ...d.data() }));
 
-                const appsSnapshot = await window.getDocs(window.collection(window.db, "applications"));
-                allApplications = [];
-                appsSnapshot.forEach(doc => { allApplications.push({ id: doc.id, ...doc.data() }); });
+                // Başvurular
+                let appSnap = await getDocs(collection(window.db, "applications"));
+                applications = [];
+                appSnap.forEach(d => applications.push({ id: d.id, ...d.data() }));
 
-                const archiveSnapshot = await window.getDocs(window.collection(window.db, "archive"));
-                allArchive = [];
-                archiveSnapshot.forEach(doc => { allArchive.push({ id: doc.id, ...doc.data() }); });
+                // Arşiv
+                let arcSnap = await getDocs(collection(window.db, "archive"));
+                archive = [];
+                arcSnap.forEach(d => archive.push({ id: d.id, ...d.data() }));
 
-                updateStatistics();
-                renderActivePatients();
-                renderInventory();
-                renderApplications();
-                renderArchive();
-            } catch (error) {
-                console.error("Veriler yüklenirken hata oluştu:", error);
+                refreshAllViews();
+            } catch (err) {
+                console.error("Veri yüklenirken hata oluştu:", err);
             }
         }
 
-        function updateStatistics() {
-            const total = allBeds.length;
-            const depot = allBeds.filter(b => b.status === 'Depoda').length;
-            const outside = allPatients.length;
-            const district = allBeds.filter(b => b.status === 'İlçe Dışı Transferde').length;
-            const broken = allBeds.filter(b => b.status === 'Arızalı').length;
-            const pending = allApplications.length;
-            const archiveCount = allArchive.length;
+        function refreshAllViews() {
+            updateStats();
+            renderActivePatients();
+            renderInventory();
+            renderApplications();
+            renderArchive();
+            updateReportData();
+        }
 
-            document.getElementById('statTotal').innerText = total;
-            document.getElementById('statDepot').innerText = depot;
-            document.getElementById('statOutside').innerText = outside;
-            document.getElementById('statDistrict').innerText = district;
-            document.getElementById('statBroken').innerText = broken;
-            document.getElementById('statPending').innerText = pending;
-            document.getElementById('statArchive').innerText = archiveCount;
+        function updateStats() {
+            document.getElementById('statTotal').innerText = inventory.length;
+            document.getElementById('statDepot').innerText = inventory.filter(i => i.status === 'Depoda').length;
+            document.getElementById('statOutside').innerText = inventory.filter(i => i.status === 'Hastada').length;
+            document.getElementById('statDistrict').innerText = inventory.filter(i => i.status === 'İlçe Dışı Transferde').length;
+            document.getElementById('statBroken').innerText = inventory.filter(i => i.status === 'Arızalı').length;
+            document.getElementById('statPending').innerText = applications.length;
+            document.getElementById('statArchive').innerText = archive.length;
 
-            document.getElementById('countActive').innerText = outside;
-            document.getElementById('countInventory').innerText = total;
-            document.getElementById('countPending').innerText = pending;
-            document.getElementById('countArchive').innerText = archiveCount;
+            document.getElementById('countActive').innerText = activePatients.length;
+            document.getElementById('countInventory').innerText = inventory.length;
+            document.getElementById('countPending').innerText = applications.length;
+            document.getElementById('countArchive').innerText = archive.length;
         }
 
         function switchTab(tabName) {
             ['active', 'inventory', 'applications', 'archive'].forEach(t => {
-                document.getElementById(`tab-${t}`).classList.add('hidden');
-                document.getElementById(`tabBtn-${t}`).className = "py-3 px-4 border-b-2 font-medium text-xs sm:text-sm transition text-gray-500 border-transparent hover:text-gray-700 whitespace-nowrap flex items-center gap-2";
+                document.getElementById('tab-' + t).classList.add('hidden');
+                document.getElementById('tabBtn-' + t).className = "py-3 px-4 border-b-2 font-medium text-xs sm:text-sm transition text-gray-500 border-transparent hover:text-gray-700 whitespace-nowrap flex items-center gap-2";
             });
-            document.getElementById(`tab-${tabName}`).classList.remove('hidden');
-            document.getElementById(`tabBtn-${tabName}`).className = "py-3 px-4 border-b-2 font-medium text-xs sm:text-sm transition text-teal-600 border-teal-600 whitespace-nowrap flex items-center gap-2";
+            document.getElementById('tab-' + tabName).classList.remove('hidden');
+            document.getElementById('tabBtn-' + tabName).className = "py-3 px-4 border-b-2 font-medium text-xs sm:text-sm transition text-teal-600 border-teal-600 whitespace-nowrap flex items-center gap-2";
         }
 
-        function openModal(modalId) {
-            document.getElementById(modalId).classList.remove('hidden');
-            if(modalId === 'approveModal') populateAvailableBedsDropdown();
-            if(modalId === 'reportModal') updateReportView();
-        }
-
-        function closeModal(modalId) {
-            document.getElementById(modalId).classList.add('hidden');
-        }
-
-        // Tutanak Yardımcı Fonksiyonları
-        function getBase64(file) {
-            return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.readAsDataURL(file);
-                reader.onload = () => resolve(reader.result);
-                reader.onerror = error => reject(error);
-            });
-        }
-
-        function previewTutanak(event, previewId) {
-            const file = event.target.files[0];
-            const previewContainer = document.getElementById(previewId);
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    previewContainer.querySelector('img').src = e.target.result;
-                    previewContainer.classList.remove('hidden');
-                }
-                reader.readAsDataURL(file);
-            } else {
-                previewContainer.classList.add('hidden');
-            }
-        }
-
-        function viewTutanak(url) {
-            const win = window.open("");
-            win.document.write(`<div style="display:flex;justify-content:center;align-items:center;min-height:100vh;background:#111;"><img src="${url}" style="max-width:100%;max-height:100vh;object-fit:contain;"/></div>`);
-        }
+        function openModal(id) { if(id === 'reportModal') updateReportData(); document.getElementById(id).classList.remove('hidden'); }
+        function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
 
         function renderActivePatients() {
-            const query = (document.getElementById('searchActive')?.value || "").toLowerCase();
-            const tbody = document.getElementById('activePatientsTable');
+            let query = document.getElementById('searchActive').value.toLowerCase();
+            let tbody = document.getElementById('activePatientsTable');
             tbody.innerHTML = '';
-
-            const filtered = allPatients.filter(p => 
-                (p.name && p.name.toLowerCase().includes(query)) ||
-                (p.tc && p.tc.includes(query)) ||
-                (p.serialNo && p.serialNo.toLowerCase().includes(query))
-            );
-
-            if(filtered.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-gray-400">Aktif hasta bulunamadı.</td></tr>`;
-                return;
-            }
-
+            let filtered = activePatients.filter(p => p.name.toLowerCase().includes(query) || p.tc.includes(query) || p.serialNo.toLowerCase().includes(query));
+            if(filtered.length === 0) { tbody.innerHTML = `<tr><td colspan="6" class="p-6 text-center text-gray-400">Kayıt bulunamadı.</td></tr>`; return; }
             filtered.forEach(p => {
                 tbody.innerHTML += `
                     <tr class="hover:bg-gray-50/50">
-                        <td class="p-3 sm:p-4 font-medium text-gray-800">${p.name}<br><span class="text-xs text-gray-400 font-normal">TC: ${p.tc}</span></td>
+                        <td class="p-3 sm:p-4 font-medium">${p.name}<br><span class="text-xs text-gray-400">TC: ${p.tc}</span></td>
                         <td class="p-3 sm:p-4 text-gray-600">${p.phone}</td>
-                        <td class="p-3 sm:p-4"><span class="bg-blue-50 text-blue-700 px-2.5 py-1 rounded-md text-xs font-semibold">${p.serialNo}</span></td>
-                        <td class="p-3 sm:p-4 text-gray-600">${p.deliveryDate || '-'}</td>
-                        <td class="p-3 sm:p-4 text-gray-600 max-w-xs truncate">${p.address}</td>
+                        <td class="p-3 sm:p-4"><span class="bg-blue-50 text-blue-700 px-2 py-1 rounded text-xs font-semibold">${p.serialNo}</span></td>
+                        <td class="p-3 sm:p-4 text-gray-600">${p.deliveryDate}</td>
+                        <td class="p-3 sm:p-4 text-gray-500 text-xs">${p.address}</td>
                         <td class="p-3 sm:p-4 text-right space-x-1">
-                            <button onclick="openEditActiveModal('${p.id}')" class="text-teal-600 hover:text-teal-800 p-1.5" title="Düzenle"><i class="fa-solid fa-pen-to-square"></i></button>
-                            <button onclick="openReturnModal('${p.id}')" class="text-amber-600 hover:text-amber-800 p-1.5" title="İade Al"><i class="fa-solid fa-rotate-left"></i></button>
+                            <button onclick="openReturnModal('${p.id}')" class="bg-amber-50 text-amber-700 px-2.5 py-1.5 rounded-lg text-xs" title="İade Al"><i class="fa-solid fa-box-open"></i></button>
+                            <button onclick="openEditActiveModal('${p.id}')" class="bg-emerald-50 text-emerald-700 px-2.5 py-1.5 rounded-lg text-xs" title="Düzenle"><i class="fa-solid fa-pen-to-square"></i> Düzenle</button>
+                            <button onclick="deleteDocItem('activePatients', '${p.id}')" class="bg-red-50 text-red-600 px-2.5 py-1.5 rounded-lg text-xs" title="Sil"><i class="fa-solid fa-trash"></i></button>
                         </td>
-                    </tr>
-                `;
+                    </tr>`;
             });
         }
 
         function renderInventory() {
-            const query = (document.getElementById('searchInventory')?.value || "").toLowerCase();
-            const tbody = document.getElementById('inventoryTable');
+            let query = document.getElementById('searchInventory').value.toLowerCase();
+            let tbody = document.getElementById('inventoryTable');
             tbody.innerHTML = '';
-
-            const filtered = allBeds.filter(b => {
-                const matchesSearch = (b.serialNo && b.serialNo.toLowerCase().includes(query)) || (b.model && b.model.toLowerCase().includes(query));
-                const matchesStatus = currentInventoryFilter === 'all' || b.status === currentInventoryFilter;
-                return matchesSearch && matchesStatus;
+            let filtered = inventory.filter(i => {
+                let matchQuery = i.serialNo.toLowerCase().includes(query) || i.model.toLowerCase().includes(query);
+                let matchStatus = currentInventoryFilter === 'all' || i.status === currentInventoryFilter;
+                return matchQuery && matchStatus;
             });
-
-            if(filtered.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-gray-400">Yatak envanteri bulunamadı.</td></tr>`;
-                return;
-            }
-
-            filtered.forEach(b => {
-                let badgeColor = "bg-gray-100 text-gray-700";
-                if(b.status === 'Depoda') badgeColor = "bg-emerald-50 text-emerald-700 border border-emerald-200";
-                else if(b.status === 'Hastada') badgeColor = "bg-blue-50 text-blue-700 border border-blue-200";
-                else if(b.status === 'İlçe Dışı Transferde') badgeColor = "bg-purple-50 text-purple-700 border border-purple-200";
-                else if(b.status === 'Arızalı') badgeColor = "bg-amber-50 text-amber-700 border border-amber-200";
-
-                let tutanakBtn = '';
-                if (b.tutanakUrl) {
-                    tutanakBtn = `<button onclick="viewTutanak('${b.tutanakUrl}')" class="text-purple-600 hover:text-purple-800 p-1.5" title="Tutanağı Görüntüle"><i class="fa-solid fa-file-contract"></i></button>`;
-                }
-
+            if(filtered.length === 0) { tbody.innerHTML = `<tr><td colspan="5" class="p-6 text-center text-gray-400">Kayıt bulunamadı.</td></tr>`; return; }
+            filtered.forEach(item => {
+                let badge = item.status === 'Depoda' ? `<span class="bg-emerald-50 text-emerald-700 px-2 py-1 rounded text-xs font-medium">Depoda</span>` :
+                            item.status === 'Hastada' ? `<span class="bg-blue-50 text-blue-700 px-2 py-1 rounded text-xs font-medium">Hastada</span>` :
+                            item.status === 'İlçe Dışı Transferde' ? `<span class="bg-purple-50 text-purple-700 px-2 py-1 rounded text-xs font-medium">İlçe Dışı Transferde</span>` :
+                            `<span class="bg-amber-50 text-amber-700 px-2 py-1 rounded text-xs font-medium">Arızalı</span>`;
                 tbody.innerHTML += `
                     <tr class="hover:bg-gray-50/50">
-                        <td class="p-3 sm:p-4 font-semibold text-gray-800">${b.serialNo}</td>
-                        <td class="p-3 sm:p-4 text-gray-600">${b.model || '-'}</td>
-                        <td class="p-3 sm:p-4"><span class="px-2.5 py-1 rounded-md text-xs font-semibold ${badgeColor}">${b.status}</span></td>
-                        <td class="p-3 sm:p-4 text-gray-600">${b.createdDate || '-'}</td>
+                        <td class="p-3 sm:p-4 font-semibold">${item.serialNo}</td>
+                        <td class="p-3 sm:p-4 text-gray-600">${item.model || '-'}</td>
+                        <td class="p-3 sm:p-4">${badge}</td>
+                        <td class="p-3 sm:p-4 text-gray-500 text-xs">${item.date}</td>
                         <td class="p-3 sm:p-4 text-right space-x-1">
-                            ${tutanakBtn}
-                            <button onclick="openEditInventoryModal('${b.id}')" class="text-teal-600 hover:text-teal-800 p-1.5" title="Düzenle"><i class="fa-solid fa-pen-to-square"></i></button>
-                            <button onclick="deleteInventoryItem('${b.id}')" class="text-red-500 hover:text-red-700 p-1.5" title="Sil"><i class="fa-solid fa-trash"></i></button>
+                            <button onclick="openEditInventoryModal('${item.id}')" class="bg-emerald-50 text-emerald-700 px-2.5 py-1.5 rounded-lg text-xs" title="Düzenle"><i class="fa-solid fa-pen-to-square"></i> Düzenle</button>
+                            <button onclick="deleteDocItem('inventory', '${item.id}')" class="bg-red-50 text-red-600 px-2.5 py-1.5 rounded-lg text-xs" title="Sil"><i class="fa-solid fa-trash"></i></button>
                         </td>
-                    </tr>
-                `;
+                    </tr>`;
             });
         }
 
-        function filterInventoryStatus(status) {
-            currentInventoryFilter = status;
-            renderInventory();
-        }
+        function filterInventoryStatus(status) { currentInventoryFilter = status; renderInventory(); }
 
         function renderApplications() {
-            const tbody = document.getElementById('applicationsTable');
+            let tbody = document.getElementById('applicationsTable');
             tbody.innerHTML = '';
-
-            if(allApplications.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-gray-400">Bekleyen başvuru bulunmuyor.</td></tr>`;
-                return;
-            }
-
-            allApplications.forEach(app => {
+            if(applications.length === 0) { tbody.innerHTML = `<tr><td colspan="5" class="p-6 text-center text-gray-400">Bekleyen başvuru yok.</td></tr>`; return; }
+            applications.forEach(app => {
                 tbody.innerHTML += `
                     <tr class="hover:bg-gray-50/50">
-                        <td class="p-3 sm:p-4 font-medium text-gray-800">${app.name}<br><span class="text-xs text-gray-400 font-normal">TC: ${app.tc}</span></td>
-                        <td class="p-3 sm:p-4 text-gray-600">${app.phone}<br><span class="text-xs text-gray-500">${app.address}</span></td>
+                        <td class="p-3 sm:p-4 font-medium">${app.name}<br><span class="text-xs text-gray-400">TC: ${app.tc}</span></td>
+                        <td class="p-3 sm:p-4 text-gray-600 text-xs">${app.phone}<br>${app.address}</td>
                         <td class="p-3 sm:p-4 text-gray-600">${app.date}</td>
-                        <td class="p-3 sm:p-4 text-gray-600">${app.notes || '-'}</td>
+                        <td class="p-3 sm:p-4 text-gray-500 text-xs">${app.notes || '-'}</td>
                         <td class="p-3 sm:p-4 text-right space-x-1">
-                            <button onclick="openApproveModal('${app.id}', '${app.name}')" class="bg-emerald-600 text-white px-2.5 py-1 rounded-lg text-xs font-medium hover:bg-emerald-700">Onayla</button>
-                            <button onclick="deleteApplication('${app.id}')" class="text-red-500 hover:text-red-700 p-1.5"><i class="fa-solid fa-trash"></i></button>
+                            <button onclick="openApproveModal('${app.id}')" class="bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-xs"><i class="fa-solid fa-check"></i> Onayla</button>
+                            <button onclick="openEditAppModal('${app.id}')" class="bg-emerald-50 text-emerald-700 px-2.5 py-1.5 rounded-lg text-xs" title="Düzenle"><i class="fa-solid fa-pen-to-square"></i> Düzenle</button>
+                            <button onclick="deleteDocItem('applications', '${app.id}')" class="bg-red-50 text-red-600 px-2.5 py-1.5 rounded-lg text-xs" title="Sil"><i class="fa-solid fa-trash"></i></button>
                         </td>
-                    </tr>
-                `;
+                    </tr>`;
             });
         }
 
         function renderArchive() {
-            const tbody = document.getElementById('archiveTable');
+            let tbody = document.getElementById('archiveTable');
             tbody.innerHTML = '';
-
-            if(allArchive.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-gray-400">Arşivde kayıt bulunmuyor.</td></tr>`;
-                return;
-            }
-
-            allArchive.forEach(item => {
+            if(archive.length === 0) { tbody.innerHTML = `<tr><td colspan="6" class="p-6 text-center text-gray-400">Arşiv boş.</td></tr>`; return; }
+            archive.forEach(item => {
                 tbody.innerHTML += `
                     <tr class="hover:bg-gray-50/50">
-                        <td class="p-3 sm:p-4 font-medium text-gray-800">${item.name}<br><span class="text-xs text-gray-400">TC: ${item.tc}</span></td>
-                        <td class="p-3 sm:p-4"><span class="bg-gray-100 text-gray-700 px-2 py-0.5 rounded text-xs font-semibold">${item.serialNo}</span></td>
-                        <td class="p-3 sm:p-4 text-gray-600">${item.duration || '-'}</td>
-                        <td class="p-3 sm:p-4"><span class="bg-amber-50 text-amber-700 px-2 py-0.5 rounded text-xs font-semibold">${item.reason}</span></td>
-                        <td class="p-3 sm:p-4 text-gray-600">${item.returnDate}</td>
+                        <td class="p-3 sm:p-4 font-medium">${item.name}<br><span class="text-xs text-gray-400">TC: ${item.tc}</span></td>
+                        <td class="p-3 sm:p-4">${item.serialNo}</td>
+                        <td class="p-3 sm:p-4 text-gray-600 font-medium">${item.durationDays} Gün</td>
+                        <td class="p-3 sm:p-4"><span class="bg-amber-50 text-amber-700 px-2 py-0.5 rounded text-xs">${item.reason}</span></td>
+                        <td class="p-3 sm:p-4 text-gray-500 text-xs">${item.returnDate}</td>
                         <td class="p-3 sm:p-4 text-right">
-                            <button onclick="deleteArchiveItem('${item.id}')" class="text-red-500 hover:text-red-700 p-1.5"><i class="fa-solid fa-trash"></i></button>
+                            <button onclick="deleteDocItem('archive', '${item.id}')" class="bg-red-50 text-red-600 px-2.5 py-1.5 rounded-lg text-xs" title="Sil"><i class="fa-solid fa-trash"></i></button>
                         </td>
-                    </tr>
-                `;
+                    </tr>`;
             });
+        }
+
+        function selectReportType(type) {
+            currentReportType = type;
+            document.getElementById('reportDate').innerText = new Date().toLocaleDateString('tr-TR');
+            ['all', 'depot', 'active', 'district', 'broken'].forEach(t => {
+                let btn = document.getElementById('repBtn-' + t);
+                btn.className = t === type ? "px-3 py-1.5 rounded-lg text-xs font-semibold bg-teal-600 text-white transition flex-1 sm:flex-none" : "px-3 py-1.5 rounded-lg text-xs font-semibold bg-white text-gray-700 border hover:bg-gray-100 transition flex-1 sm:flex-none";
+            });
+            document.getElementById('sec-depot').classList.toggle('active-report', type === 'all' || type === 'depot');
+            document.getElementById('sec-active').classList.toggle('active-report', type === 'all' || type === 'active');
+            document.getElementById('sec-district').classList.toggle('active-report', type === 'all' || type === 'district');
+            document.getElementById('sec-broken').classList.toggle('active-report', type === 'all' || type === 'broken');
+        }
+
+        function updateReportData() {
+            selectReportType(currentReportType);
+            document.getElementById('repDepotTable').innerHTML = inventory.filter(i => i.status === 'Depoda').map(b => `<tr class="border-b"><td class="p-2">${b.serialNo}</td><td class="p-2">${b.model}</td><td class="p-2">${b.date}</td></tr>`).join('') || `<tr><td colspan="3" class="p-2 text-center text-gray-400">Kayıt yok</td></tr>`;
+            document.getElementById('repActiveTable').innerHTML = activePatients.map(p => `<tr class="border-b"><td class="p-2">${p.serialNo}</td><td class="p-2">${p.name}</td><td class="p-2">${p.phone}</td><td class="p-2">${p.deliveryDate}</td></tr>`).join('') || `<tr><td colspan="4" class="p-2 text-center text-gray-400">Kayıt yok</td></tr>`;
+            document.getElementById('repDistrictTable').innerHTML = inventory.filter(i => i.status === 'İlçe Dışı Transferde').map(b => `<tr class="border-b"><td class="p-2">${b.serialNo}</td><td class="p-2">${b.model}</td><td class="p-2">${b.date}</td></tr>`).join('') || `<tr><td colspan="3" class="p-2 text-center text-gray-400">Kayıt yok</td></tr>`;
+            document.getElementById('repBrokenTable').innerHTML = inventory.filter(i => i.status === 'Arızalı').map(b => `<tr class="border-b"><td class="p-2">${b.serialNo}</td><td class="p-2">${b.model}</td></tr>`).join('') || `<tr><td colspan="2" class="p-2 text-center text-gray-400">Kayıt yok</td></tr>`;
         }
 
         async function handleInventorySubmit(e) {
             e.preventDefault();
-            const serialNo = document.getElementById('invSerialNo').value.trim();
-            const model = document.getElementById('invModel').value.trim();
-            const status = document.getElementById('invInitialStatus').value;
-            const createdDate = new Date().toISOString().split('T')[0];
-
-            const fileInput = document.getElementById('invTutanakFile');
-            let tutanakUrl = "";
-            if (fileInput && fileInput.files[0]) {
-                tutanakUrl = await getBase64(fileInput.files[0]);
-            }
-
-            try {
-                await window.addDoc(window.collection(window.db, "beds"), { serialNo, model, status, createdDate, tutanakUrl });
-                closeModal('inventoryModal');
-                e.target.reset();
-                document.getElementById('tutanakPreview').classList.add('hidden');
-                loadAllData();
-            } catch (error) {
-                alert("Yatak eklenirken hata oluştu: " + error.message);
-            }
+            let serialNo = document.getElementById('invSerialNo').value.trim();
+            await addDoc(collection(window.db, "inventory"), {
+                serialNo: serialNo,
+                model: document.getElementById('invModel').value.trim() || 'Standart',
+                status: document.getElementById('invInitialStatus').value,
+                date: new Date().toISOString().split('T')[0]
+            });
+            closeModal('inventoryModal');
+            e.target.reset();
+            await loadAllDataFromFirebase();
         }
 
         async function handleAppSubmit(e) {
             e.preventDefault();
-            const name = document.getElementById('appName').value.trim();
-            const tc = document.getElementById('appTc').value.trim();
-            const phone = document.getElementById('appPhone').value.trim();
-            const date = document.getElementById('appDate').value;
-            const address = document.getElementById('appAddress').value.trim();
-            const notes = document.getElementById('appNotes').value.trim();
-
-            try {
-                await window.addDoc(window.collection(window.db, "applications"), { name, tc, phone, date, address, notes });
-                closeModal('appModal');
-                e.target.reset();
-                loadAllData();
-            } catch (error) {
-                alert("Başvuru kaydedilirken hata oluştu: " + error.message);
-            }
-        }
-
-        function openApproveModal(appId, patientName) {
-            document.getElementById('approveAppDocId').value = appId;
-            document.getElementById('approvePatientName').innerText = patientName;
-            openModal('approveModal');
-        }
-
-        function populateAvailableBedsDropdown() {
-            const select = document.getElementById('approveBedSerial');
-            select.innerHTML = '';
-            const depotBeds = allBeds.filter(b => b.status === 'Depoda');
-            if(depotBeds.length === 0) {
-                select.innerHTML = `<option value="">Depoda uygun yatak bulunmuyor!</option>`;
-                return;
-            }
-            depotBeds.forEach(b => {
-                select.innerHTML += `<option value="${b.serialNo}">${b.serialNo} (${b.model || 'Model belirtilmemiş'})</option>`;
+            await addDoc(collection(window.db, "applications"), {
+                name: document.getElementById('appName').value,
+                tc: document.getElementById('appTc').value,
+                phone: document.getElementById('appPhone').value,
+                date: document.getElementById('appDate').value,
+                address: document.getElementById('appAddress').value,
+                notes: document.getElementById('appNotes').value
             });
+            closeModal('appModal');
+            e.target.reset();
+            await loadAllDataFromFirebase();
+        }
+
+        function openApproveModal(appId) {
+            let app = applications.find(a => a.id === appId);
+            if(!app) return;
+            document.getElementById('approveAppDocId').value = app.id;
+            document.getElementById('approvePatientName').innerText = app.name;
+            let select = document.getElementById('approveBedSerial');
+            select.innerHTML = inventory.filter(i => i.status === 'Depoda').map(b => `<option value="${b.id}|${b.serialNo}">${b.serialNo} - ${b.model}</option>`).join('') || `<option value="">Depoda yatak yok!</option>`;
+            openModal('approveModal');
         }
 
         async function handleAppApproval(e) {
             e.preventDefault();
-            const appId = document.getElementById('approveAppDocId').value;
-            const bedSerial = document.getElementById('approveBedSerial').value;
-            const deliveryDate = document.getElementById('approveDeliveryDate').value;
+            let appDocId = document.getElementById('approveAppDocId').value;
+            let bedVal = document.getElementById('approveBedSerial').value;
+            if(!bedVal) return;
+            let [bedDocId, bedSerial] = bedVal.split('|');
 
-            if(!bedSerial) { alert("Lütfen geçerli bir yatak seçin."); return; }
+            let app = applications.find(a => a.id === appDocId);
+            
+            // Aktif hastalara ekle
+            await addDoc(collection(window.db, "activePatients"), {
+                name: app.name, tc: app.tc, phone: app.phone, serialNo: bedSerial,
+                deliveryDate: document.getElementById('approveDeliveryDate').value, address: app.address
+            });
 
-            const app = allApplications.find(a => a.id === appId);
-            if(!app) return;
+            // Yatak durumunu hastada olarak güncelle
+            await updateDoc(doc(window.db, "inventory", bedDocId), { status: 'Hastada' });
 
-            try {
-                await window.addDoc(window.collection(window.db, "patients"), {
-                    name: app.name, tc: app.tc, phone: app.phone, address: app.address, serialNo: bedSerial, deliveryDate: deliveryDate
-                });
+            // Başvuruyu sil
+            await deleteDoc(doc(window.db, "applications", appDocId));
 
-                const bedObj = allBeds.find(b => b.serialNo === bedSerial);
-                if(bedObj) {
-                    await window.updateDoc(window.doc(window.db, "beds", bedObj.id), { status: "Hastada" });
-                }
-
-                await window.deleteDoc(window.doc(window.db, "applications", appId));
-                closeModal('approveModal');
-                loadAllData();
-                switchTab('active');
-            } catch (error) {
-                alert("İşlem sırasında hata oluştu: " + error.message);
-            }
+            closeModal('approveModal');
+            await loadAllDataFromFirebase();
         }
 
         function openReturnModal(patientId) {
-            const patient = allPatients.find(p => p.id === patientId);
-            if(!patient) return;
-
-            document.getElementById('returnPatientDocId').value = patient.id;
-            document.getElementById('returnBedSerialVal').value = patient.serialNo;
-            document.getElementById('returnPatientName').innerText = patient.name;
-            document.getElementById('returnBedDisplay').innerText = patient.serialNo;
+            let p = activePatients.find(x => x.id === patientId);
+            if(!p) return;
+            document.getElementById('returnPatientDocId').value = p.id;
+            document.getElementById('returnBedSerialVal').value = p.serialNo;
+            document.getElementById('returnPatientName').innerText = p.name;
+            document.getElementById('returnBedDisplay').innerText = p.serialNo;
             openModal('returnModal');
         }
 
         async function handleReturnSubmit(e) {
             e.preventDefault();
-            const patientId = document.getElementById('returnPatientDocId').value;
-            const bedSerial = document.getElementById('returnBedSerialVal').value;
-            const reason = document.getElementById('returnReason').value;
-            const newBedStatus = document.getElementById('returnBedStatus').value;
-            const returnDate = document.getElementById('returnDate').value;
+            let patientDocId = document.getElementById('returnPatientDocId').value;
+            let bedSerial = document.getElementById('returnBedSerialVal').value;
+            let returnDate = document.getElementById('returnDate').value;
 
-            const patient = allPatients.find(p => p.id === patientId);
-            if(!patient) return;
+            let patient = activePatients.find(p => p.id === patientDocId);
+            let diffDays = Math.ceil(Math.abs(new Date(returnDate) - new Date(patient.deliveryDate)) / (1000 * 60 * 60 * 24));
 
-            try {
-                let duration = "-";
-                if(patient.deliveryDate) {
-                    const start = new Date(patient.deliveryDate);
-                    const end = new Date(returnDate);
-                    const diffTime = Math.abs(end - start);
-                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                    duration = `${diffDays} Gün`;
-                }
+            // Arşive ekle
+            await addDoc(collection(window.db, "archive"), {
+                name: patient.name, tc: patient.tc, serialNo: bedSerial,
+                durationDays: isNaN(diffDays) ? 0 : diffDays,
+                reason: document.getElementById('returnReason').value,
+                returnDate: returnDate
+            });
 
-                await window.addDoc(window.collection(window.db, "archive"), {
-                    name: patient.name, tc: patient.tc, serialNo: bedSerial, duration: duration, reason: reason, returnDate: returnDate
-                });
-
-                const bedObj = allBeds.find(b => b.serialNo === bedSerial);
-                if(bedObj) {
-                    await window.updateDoc(window.doc(window.db, "beds", bedObj.id), { status: newBedStatus });
-                }
-
-                await window.deleteDoc(window.doc(window.db, "patients", patientId));
-                closeModal('returnModal');
-                loadAllData();
-            } catch (error) {
-                alert("İade işlemi sırasında hata oluştu: " + error.message);
+            // Yatağın durumunu depoda/ilçe dışı/arızalı yap
+            let bed = inventory.find(i => i.serialNo === bedSerial);
+            if(bed) {
+                await updateDoc(doc(window.db, "inventory", bed.id), { status: document.getElementById('returnBedStatus').value });
             }
+
+            // Aktif hastadan sil
+            await deleteDoc(doc(window.db, "activePatients", patientDocId));
+
+            closeModal('returnModal');
+            await loadAllDataFromFirebase();
         }
 
-        async function deleteInventoryItem(id) {
-            if(confirm("Bu yatağı silmek istediğinize emin misiniz?")) {
-                await window.deleteDoc(window.doc(window.db, "beds", id));
-                loadAllData();
-            }
-        }
-
-        async function deleteApplication(id) {
-            if(confirm("Bu başvuruyu silmek istediğinize emin misiniz?")) {
-                await window.deleteDoc(window.doc(window.db, "applications", id));
-                loadAllData();
-            }
-        }
-
-        async function deleteArchiveItem(id) {
-            if(confirm("Bu arşiv kaydını silmek istediğinize emin misiniz?")) {
-                await window.deleteDoc(window.doc(window.db, "archive", id));
-                loadAllData();
-            }
-        }
-
+        // --- DÜZENLEME İŞLEMLERİ ---
         function openEditActiveModal(id) {
-            const p = allPatients.find(item => item.id === id);
+            let p = activePatients.find(x => x.id === id);
             if(!p) return;
             document.getElementById('editActiveId').value = p.id;
             document.getElementById('editActiveName').value = p.name;
             document.getElementById('editActiveTc').value = p.tc;
             document.getElementById('editActivePhone').value = p.phone;
-            document.getElementById('editActiveDate').value = p.deliveryDate || '';
+            document.getElementById('editActiveDate').value = p.deliveryDate;
             document.getElementById('editActiveSerial').value = p.serialNo;
             document.getElementById('editActiveAddress').value = p.address;
             openModal('editActiveModal');
@@ -851,100 +791,73 @@
 
         async function handleEditActiveSubmit(e) {
             e.preventDefault();
-            const id = document.getElementById('editActiveId').value;
-            try {
-                await window.updateDoc(window.doc(window.db, "patients", id), {
-                    name: document.getElementById('editActiveName').value.trim(),
-                    tc: document.getElementById('editActiveTc').value.trim(),
-                    phone: document.getElementById('editActivePhone').value.trim(),
-                    deliveryDate: document.getElementById('editActiveDate').value,
-                    address: document.getElementById('editActiveAddress').value.trim()
-                });
-                closeModal('editActiveModal');
-                loadAllData();
-            } catch (error) {
-                alert("Güncelleme hatası: " + error.message);
-            }
+            let id = document.getElementById('editActiveId').value;
+            await updateDoc(doc(window.db, "activePatients", id), {
+                name: document.getElementById('editActiveName').value,
+                tc: document.getElementById('editActiveTc').value,
+                phone: document.getElementById('editActivePhone').value,
+                deliveryDate: document.getElementById('editActiveDate').value,
+                address: document.getElementById('editActiveAddress').value
+            });
+            closeModal('editActiveModal');
+            await loadAllDataFromFirebase();
         }
 
         function openEditInventoryModal(id) {
-            const b = allBeds.find(item => item.id === id);
-            if(!b) return;
-            document.getElementById('editInvId').value = b.id;
-            document.getElementById('editInvSerialNo').value = b.serialNo;
-            document.getElementById('editInvModel').value = b.model || '';
-            document.getElementById('editInvStatus').value = b.status;
-            document.getElementById('editInvTutanakFile').value = '';
-            document.getElementById('editTutanakPreview').classList.add('hidden');
+            let item = inventory.find(x => x.id === id);
+            if(!item) return;
+            document.getElementById('editInvId').value = item.id;
+            document.getElementById('editInvSerialNo').value = item.serialNo;
+            document.getElementById('editInvModel').value = item.model || '';
+            document.getElementById('editInvStatus').value = item.status;
             openModal('editInventoryModal');
         }
 
         async function handleEditInventorySubmit(e) {
             e.preventDefault();
-            const id = document.getElementById('editInvId').value;
-            const fileInput = document.getElementById('editInvTutanakFile');
-            
-            try {
-                let updateData = {
-                    serialNo: document.getElementById('editInvSerialNo').value.trim(),
-                    model: document.getElementById('editInvModel').value.trim(),
-                    status: document.getElementById('editInvStatus').value
-                };
-
-                if (fileInput && fileInput.files[0]) {
-                    updateData.tutanakUrl = await getBase64(fileInput.files[0]);
-                }
-
-                await window.updateDoc(window.doc(window.db, "beds", id), updateData);
-                closeModal('editInventoryModal');
-                loadAllData();
-            } catch (error) {
-                alert("Güncelleme hatası: " + error.message);
-            }
-        }
-
-        function selectReportType(type) {
-            currentReportType = type;
-            ['all', 'depot', 'active', 'district', 'broken'].forEach(t => {
-                const btn = document.getElementById(`repBtn-${t}`);
-                if(btn) {
-                    if(t === type) {
-                        btn.className = "px-3 py-1.5 rounded-lg text-xs font-semibold bg-teal-600 text-white transition flex-1 sm:flex-none";
-                    } else {
-                        btn.className = "px-3 py-1.5 rounded-lg text-xs font-semibold bg-white text-gray-700 border hover:bg-gray-100 transition flex-1 sm:flex-none";
-                    }
-                }
+            let id = document.getElementById('editInvId').value;
+            await updateDoc(doc(window.db, "inventory", id), {
+                serialNo: document.getElementById('editInvSerialNo').value.trim(),
+                model: document.getElementById('editInvModel').value.trim(),
+                status: document.getElementById('editInvStatus').value
             });
-            updateReportView();
+            closeModal('editInventoryModal');
+            await loadAllDataFromFirebase();
         }
 
-        function updateReportView() {
-            document.getElementById('reportDate').innerText = new Date().toLocaleDateString('tr-TR');
+        function openEditAppModal(id) {
+            let app = applications.find(x => x.id === id);
+            if(!app) return;
+            document.getElementById('editAppId').value = app.id;
+            document.getElementById('editAppName').value = app.name;
+            document.getElementById('editAppTc').value = app.tc;
+            document.getElementById('editAppPhone').value = app.phone;
+            document.getElementById('editAppDate').value = app.date;
+            document.getElementById('editAppAddress').value = app.address;
+            document.getElementById('editAppNotes').value = app.notes || '';
+            openModal('editAppModal');
+        }
 
-            const sections = {
-                'sec-depot': ['all', 'depot'].includes(currentReportType),
-                'sec-active': ['all', 'active'].includes(currentReportType),
-                'sec-district': ['all', 'district'].includes(currentReportType),
-                'sec-broken': ['all', 'broken'].includes(currentReportType)
-            };
+        async function handleEditAppSubmit(e) {
+            e.preventDefault();
+            let id = document.getElementById('editAppId').value;
+            await updateDoc(doc(window.db, "applications", id), {
+                name: document.getElementById('editAppName').value,
+                tc: document.getElementById('editAppTc').value,
+                phone: document.getElementById('editAppPhone').value,
+                date: document.getElementById('editAppDate').value,
+                address: document.getElementById('editAppAddress').value,
+                notes: document.getElementById('editAppNotes').value
+            });
+            closeModal('editAppModal');
+            await loadAllDataFromFirebase();
+        }
 
-            for (const [secId, show] of Object.entries(sections)) {
-                const el = document.getElementById(secId);
-                if(el) {
-                    if(show) {
-                        el.classList.add('active-report', 'block');
-                        el.classList.remove('hidden');
-                    } else {
-                        el.classList.remove('active-report', 'block');
-                        el.classList.add('hidden');
-                    }
-                }
+        async function deleteDocItem(collName, docId) {
+            if(confirm('Silmek istediğinize emin misiniz?')) {
+                await deleteDoc(doc(window.db, collName, docId));
+                await loadAllDataFromFirebase();
             }
-
-            document.getElementById('repDepotTable').innerHTML = allBeds.filter(b => b.status === 'Depoda').map(b => `<tr><td class="p-2">${b.serialNo}</td><td class="p-2">${b.model || '-'}</td><td class="p-2">${b.createdDate || '-'}</td></tr>`).join('') || `<tr><td colspan="3" class="p-2 text-center text-gray-400">Kayıt yok</td></tr>`;
-            document.getElementById('repActiveTable').innerHTML = allPatients.map(p => `<tr><td class="p-2">${p.serialNo}</td><td class="p-2">${p.name}</td><td class="p-2">${p.phone}</td><td class="p-2">${p.deliveryDate || '-'}</td></tr>`).join('') || `<tr><td colspan="4" class="p-2 text-center text-gray-400">Kayıt yok</td></tr>`;
-            document.getElementById('repDistrictTable').innerHTML = allBeds.filter(b => b.status === 'İlçe Dışı Transferde').map(b => `<tr><td class="p-2">${b.serialNo}</td><td class="p-2">${b.model || '-'}</td><td class="p-2">${b.createdDate || '-'}</td></tr>`).join('') || `<tr><td colspan="3" class="p-2 text-center text-gray-400">Kayıt yok</td></tr>`;
-            document.getElementById('repBrokenTable').innerHTML = allBeds.filter(b => b.status === 'Arızalı').map(b => `<tr><td class="p-2">${b.serialNo}</td><td class="p-2">${b.model || '-'}</td></tr>`).join('') || `<tr><td colspan="2" class="p-2 text-center text-gray-400">Kayıt yok</td></tr>`;
         }
     </script>
 </body>
