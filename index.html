@@ -2,56 +2,985 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Demre Bld. Reklam Takip Paneli</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Elektronik Hasta Yatağı Takip Sistemi - Firebase</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
-    <!-- PWA Ayarları -->
-    <meta name="theme-color" content="#0f172a">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Demre Bld. Reklam Takip">
-    
-    <script>
-        const manifestData = {
-            "name": "Demre Bld. Reklam Takip Paneli",
-            "short_name": "Demre Reklam Takip",
-            "start_url": "./",
-            "display": "standalone",
-            "background_color": "#0f172a",
-            "theme_color": "#0f172a",
-            "icons": [
-                {
-                    "src": "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/svgs/solid/billboard.svg",
-                    "sizes": "192x192 512x512",
-                    "type": "image/svg+xml"
-                }
-            ]
+    <!-- Firebase SDK (Modular v10 CDN) -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getFirestore, collection, getDocs, addDoc, deleteDoc, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+          apiKey: "AIzaSyA9nEtDPBTUYoSAJJFrOx39PP-L9bbRC6Q",
+          authDomain: "eyataktakip.firebaseapp.com",
+          projectId: "eyataktakip",
+          storageBucket: "eyataktakip.firebasestorage.app",
+          messagingSenderId: "832528137221",
+          appId: "1:832528137221:web:58cca974e1a099b8c5f06c",
+          measurementId: "G-YC9WTGKRLX"
         };
-        const stringManifest = JSON.stringify(manifestData);
-        const blob = new Blob([stringManifest], {type: 'application/json'});
-        const manifestURL = URL.createObjectURL(blob);
-        const link = document.createElement('link');
-        link.rel = 'manifest';
-        link.href = manifestURL;
-        document.head.appendChild(link);
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        window.db = db;
+        window.collection = collection;
+        window.getDocs = getDocs;
+        window.addDoc = addDoc;
+        window.deleteDoc = deleteDoc;
+        window.doc = doc;
+        window.updateDoc = updateDoc;
+
+        window.addEventListener('DOMContentLoaded', () => {
+            initializeAppUI();
+        });
     </script>
 
-    <!-- Tailwind CSS ve FontAwesome -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        @media print {
-            .no-print { display: none !important; }
-            body { background: white !important; font-size: 11px !important; color: black !important; }
-            .print-shadow { box-shadow: none !important; border: none !important; padding: 0 !important; }
-            .print-break { page-break-inside: avoid; }
+       @media print {
+            body { background: white !important; color: black !important; margin: 0 !important; padding: 0 !important; }
+            header, .no-print, button, nav, .fixed > div > div:first-child { display: none !important; }
+            #reportModal { display: block !important; position: absolute !important; top: 0 !important; left: 0 !important; width: 100% !important; height: auto !important; background: white !important; z-index: 9999 !important; padding: 0 !important; margin: 0 !important; }
+            #reportModal > div { max-width: 100% !important; width: 100% !important; max-height: none !important; overflow: visible !important; box-shadow: none !important; border: none !important; padding: 0 !important; margin: 0 !important; }
+            #printableArea, #reportTitleMain, #reportDate { display: block !important; visibility: visible !important; color: black !important; }
+            .report-section { display: none !important; }
+            .report-section.active-report { display: block !important; }
+            table { width: 100% !important; border-collapse: collapse !important; page-break-inside: auto; }
+            tr { page-break-inside: avoid; page-break-after: auto; }
+            th, td { border: 1px solid #cbd5e1 !important; padding: 6px 8px !important; font-size: 11px !important; color: black !important; }
         }
-        input, select, button { touch-action: manipulation; }
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
 </head>
-<body class="bg-slate-900 font-sans text-slate-100 selection:bg-indigo-600 selection:text-white pb-12">
+<body class="bg-gray-50 text-gray-800 font-sans min-h-screen pb-12">
 
-    <!-- Bildirim Kutusu -->
-    <div id="bildirim" class="fixed top-4 left
+    <!-- Navbar -->
+    <header class="bg-teal-700 text-white shadow-md no-print sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex flex-col sm:flex-row justify-between items-center gap-3">
+            <div class="flex items-center space-x-3 w-full sm:w-auto justify-between sm:justify-start">
+                <div class="flex items-center space-x-3">
+                    <div class="bg-white text-teal-700 p-2.5 rounded-xl shadow">
+                        <i class="fa-solid fa-bed-pulse text-xl sm:text-2xl"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-base sm:text-xl font-bold tracking-wide">Hasta Yatağı Takip (Cloud)</h1>
+                        <p class="text-[10px] sm:text-xs text-teal-200">Firebase Ortak Veritabanı</p>
+                    </div>
+                </div>
+            </div>
+            <div class="grid grid-cols-2 sm:flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                <button type="button" onclick="openModal('reportModal')" class="bg-amber-600 hover:bg-amber-700 text-white px-3 py-2 rounded-lg text-xs sm:text-sm font-medium transition shadow flex items-center justify-center gap-1.5 col-span-2 sm:col-auto">
+                    <i class="fa-solid fa-file-pdf"></i> Raporlar
+                </button>
+                <button type="button" onclick="openModal('districtModal')" class="bg-purple-600 hover:bg-purple-800 text-white px-3 py-2 rounded-lg text-xs sm:text-sm font-medium transition shadow flex items-center justify-center gap-1.5 col-span-1 sm:col-auto">
+                    <i class="fa-solid fa-truck-arrow-right"></i> İlçe Dışı Transfer
+                </button>
+                <button type="button" onclick="openModal('inventoryModal')" class="bg-teal-600 hover:bg-teal-800 text-white px-3 py-2 rounded-lg text-xs sm:text-sm font-medium transition shadow flex items-center justify-center gap-1.5 col-span-1 sm:col-auto">
+                    <i class="fa-solid fa-plus-circle"></i> Yatak Ekle
+                </button>
+                <button type="button" onclick="openModal('appModal')" class="bg-teal-600 hover:bg-teal-800 text-white px-3 py-2 rounded-lg text-xs sm:text-sm font-medium transition shadow flex items-center justify-center gap-1.5 col-span-2 sm:col-auto">
+                    <i class="fa-solid fa-user-plus"></i> Yeni Başvuru
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-3 sm:px-4 py-4 sm:py-6">
+
+        <!-- İstatistikler -->
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3 mb-6">
+            <div class="bg-white p-3.5 rounded-xl shadow-sm border border-gray-100">
+                <div class="text-gray-400 text-[11px] font-medium uppercase">Toplam Envanter</div>
+                <div id="statTotal" class="text-xl sm:text-2xl font-bold text-gray-800 mt-1">0</div>
+            </div>
+            <div class="bg-white p-3.5 rounded-xl shadow-sm border border-gray-100 cursor-pointer hover:border-emerald-500 transition" onclick="filterInventoryStatus('Depoda'); switchTab('inventory');">
+                <div class="text-emerald-600 text-[11px] font-medium uppercase">Depodaki Yatak</div>
+                <div id="statDepot" class="text-xl sm:text-2xl font-bold text-emerald-600 mt-1">0</div>
+            </div>
+            <div class="bg-white p-3.5 rounded-xl shadow-sm border border-gray-100 cursor-pointer hover:border-blue-500 transition" onclick="filterInventoryStatus('Hastada'); switchTab('inventory');">
+                <div class="text-blue-600 text-[11px] font-medium uppercase">Dışarıdaki (Aktif)</div>
+                <div id="statOutside" class="text-xl sm:text-2xl font-bold text-blue-600 mt-1">0</div>
+            </div>
+            <div class="bg-white p-3.5 rounded-xl shadow-sm border border-gray-100 cursor-pointer hover:border-purple-500 transition" onclick="filterInventoryStatus('İlçe Dışı Transferde'); switchTab('inventory');">
+                <div class="text-purple-600 text-[11px] font-medium uppercase">İlçe Dışında</div>
+                <div id="statDistrict" class="text-xl sm:text-2xl font-bold text-purple-600 mt-1">0</div>
+            </div>
+            <div class="bg-white p-3.5 rounded-xl shadow-sm border border-gray-100 cursor-pointer hover:border-amber-500 transition" onclick="filterInventoryStatus('Arızalı'); switchTab('inventory');">
+                <div class="text-amber-600 text-[11px] font-medium uppercase">Arızalı / Bakımda</div>
+                <div id="statBroken" class="text-xl sm:text-2xl font-bold text-amber-600 mt-1">0</div>
+            </div>
+            <div class="bg-white p-3.5 rounded-xl shadow-sm border border-gray-100 cursor-pointer hover:border-indigo-500 transition" onclick="switchTab('applications');">
+                <div class="text-indigo-600 text-[11px] font-medium uppercase">Bekleyen Başvuru</div>
+                <div id="statPending" class="text-xl sm:text-2xl font-bold text-indigo-600 mt-1">0</div>
+            </div>
+            <div class="bg-white p-3.5 rounded-xl shadow-sm border border-gray-100 cursor-pointer hover:border-gray-500 transition" onclick="switchTab('archive');">
+                <div class="text-gray-500 text-[11px] font-medium uppercase">İade Arşivi</div>
+                <div id="statArchive" class="text-xl sm:text-2xl font-bold text-gray-600 mt-1">0</div>
+            </div>
+        </div>
+
+        <!-- Sekmeler -->
+        <div class="flex border-b border-gray-200 mb-6 overflow-x-auto scrollbar-none">
+            <button type="button" onclick="switchTab('active')" id="tabBtn-active" class="py-3 px-4 border-b-2 font-medium text-xs sm:text-sm transition text-teal-600 border-teal-600 whitespace-nowrap flex items-center gap-2">
+                <i class="fa-solid fa-hospital-user"></i>Aktif Hastalar (<span id="countActive">0</span>)
+            </button>
+            <button type="button" onclick="switchTab('inventory')" id="tabBtn-inventory" class="py-3 px-4 border-b-2 font-medium text-xs sm:text-sm transition text-gray-500 border-transparent hover:text-gray-700 whitespace-nowrap flex items-center gap-2">
+                <i class="fa-solid fa-boxes-stacked"></i>Yatak Envanteri (<span id="countInventory">0</span>)
+            </button>
+            <button type="button" onclick="switchTab('applications')" id="tabBtn-applications" class="py-3 px-4 border-b-2 font-medium text-xs sm:text-sm transition text-gray-500 border-transparent hover:text-gray-700 whitespace-nowrap flex items-center gap-2">
+                <i class="fa-solid fa-clipboard-list"></i>Başvurular (<span id="countPending">0</span>)
+            </button>
+            <button type="button" onclick="switchTab('archive')" id="tabBtn-archive" class="py-3 px-4 border-b-2 font-medium text-xs sm:text-sm transition text-gray-500 border-transparent hover:text-gray-700 whitespace-nowrap flex items-center gap-2">
+                <i class="fa-solid fa-box-archive"></i>İade Arşivi (<span id="countArchive">0</span>)
+            </button>
+        </div>
+
+        <!-- SEKME 1: AKTİF HASTALAR -->
+        <div id="tab-active" class="space-y-4">
+            <div class="bg-white p-3 sm:p-4 rounded-xl shadow-sm border border-gray-100">
+                <div class="relative w-full sm:w-96">
+                    <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400"><i class="fa-solid fa-search"></i></span>
+                    <input type="text" id="searchActive" onkeyup="renderActivePatients()" placeholder="Hasta adı, TC veya Seri No ile ara..." class="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-teal-500">
+                </div>
+            </div>
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse min-w-[650px]">
+                        <thead>
+                            <tr class="bg-gray-50 text-gray-600 text-xs uppercase tracking-wider border-b border-gray-100">
+                                <th class="p-3 sm:p-4">Emanet Alan Hasta</th>
+                                <th class="p-3 sm:p-4">İletişim</th>
+                                <th class="p-3 sm:p-4">Yatak Seri No</th>
+                                <th class="p-3 sm:p-4">Teslim Tarihi</th>
+                                <th class="p-3 sm:p-4">Adres</th>
+                                <th class="p-3 sm:p-4 text-right">İşlemler</th>
+                            </tr>
+                        </thead>
+                        <tbody id="activePatientsTable" class="divide-y divide-gray-100 text-sm"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- SEKME 2: YATAK ENVANTERİ -->
+        <div id="tab-inventory" class="hidden space-y-4">
+            <div class="bg-white p-3 sm:p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col sm:flex-row justify-between items-center gap-3">
+                <div class="relative w-full sm:w-96">
+                    <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400"><i class="fa-solid fa-search"></i></span>
+                    <input type="text" id="searchInventory" onkeyup="renderInventory()" placeholder="Seri no veya model ile ara..." class="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-teal-500">
+                </div>
+                <div class="flex flex-wrap gap-1.5 w-full sm:w-auto">
+                    <button type="button" onclick="filterInventoryStatus('all')" id="filterBtn-all" class="px-3 py-1.5 text-xs bg-gray-100 rounded-lg hover:bg-gray-200 font-medium">Tümü</button>
+                    <button type="button" onclick="filterInventoryStatus('Depoda')" id="filterBtn-Depoda" class="px-3 py-1.5 text-xs bg-emerald-50 text-emerald-700 rounded-lg hover:bg-emerald-100 font-medium border border-emerald-200">Depoda</button>
+                    <button type="button" onclick="filterInventoryStatus('Hastada')" id="filterBtn-Hastada" class="px-3 py-1.5 text-xs bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 font-medium">Hastada</button>
+                    <button type="button" onclick="filterInventoryStatus('İlçe Dışı Transferde')" id="filterBtn-District" class="px-3 py-1.5 text-xs bg-purple-50 text-purple-700 rounded-lg hover:bg-purple-100 font-medium">İlçe Dışı Transferde</button>
+                    <button type="button" onclick="filterInventoryStatus('Arızalı')" id="filterBtn-Arızalı" class="px-3 py-1.5 text-xs bg-amber-50 text-amber-700 rounded-lg hover:bg-amber-100 font-medium">Arızalı</button>
+                </div>
+            </div>
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse min-w-[500px]">
+                        <thead>
+                            <tr class="bg-gray-50 text-gray-600 text-xs uppercase tracking-wider border-b border-gray-100">
+                                <th class="p-3 sm:p-4">Seri Numarası</th>
+                                <th class="p-3 sm:p-4">Yatak Modeli / Not</th>
+                                <th class="p-3 sm:p-4">Durum / Transfer Detayı</th>
+                                <th class="p-3 sm:p-4">Eklenme Tarihi</th>
+                                <th class="p-3 sm:p-4 text-right">İşlemler</th>
+                            </tr>
+                        </thead>
+                        <tbody id="inventoryTable" class="divide-y divide-gray-100 text-sm"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- SEKME 3: BAŞVURULAR -->
+        <div id="tab-applications" class="hidden space-y-4">
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse min-w-[600px]">
+                        <thead>
+                            <tr class="bg-gray-50 text-gray-600 text-xs uppercase tracking-wider border-b border-gray-100">
+                                <th class="p-3 sm:p-4">Başvuran / Hasta</th>
+                                <th class="p-3 sm:p-4">İletişim & Adres</th>
+                                <th class="p-3 sm:p-4">Başvuru Tarihi</th>
+                                <th class="p-3 sm:p-4">Notlar</th>
+                                <th class="p-3 sm:p-4 text-right">İşlemler</th>
+                            </tr>
+                        </thead>
+                        <tbody id="applicationsTable" class="divide-y divide-gray-100 text-sm"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- SEKME 4: ARŞİV -->
+        <div id="tab-archive" class="hidden space-y-4">
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse min-w-[600px]">
+                        <thead>
+                            <tr class="bg-gray-50 text-gray-600 text-xs uppercase tracking-wider border-b border-gray-100">
+                                <th class="p-3 sm:p-4">Hasta Adı / TC</th>
+                                <th class="p-3 sm:p-4">Yatak Seri No</th>
+                                <th class="p-3 sm:p-4">Kullanım Süresi</th>
+                                <th class="p-3 sm:p-4">İade Nedeni</th>
+                                <th class="p-3 sm:p-4">İade Tarihi</th>
+                                <th class="p-3 sm:p-4 text-right">İşlemler</th>
+                            </tr>
+                        </thead>
+                        <tbody id="archiveTable" class="divide-y divide-gray-100 text-sm"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- MODAL: YATAK EKLE -->
+    <div id="inventoryModal" class="fixed inset-0 bg-black/50 hidden z-50 flex items-center justify-center p-3 sm:p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full p-4 sm:p-6 shadow-xl">
+            <div class="flex justify-between items-center mb-4"><h3 class="font-bold text-gray-800">Envantere Yeni Yatak Ekle</h3><button type="button" onclick="closeModal('inventoryModal')"><i class="fa-solid fa-xmark"></i></button></div>
+            <form id="inventoryForm" onsubmit="handleInventorySubmit(event)" class="space-y-3">
+                <div><label class="text-xs font-medium text-gray-600">Seri Numarası *</label><input type="text" id="invSerialNo" required class="w-full px-3 py-2 border rounded-lg text-sm"></div>
+                <div><label class="text-xs font-medium text-gray-600">Model</label><input type="text" id="invModel" class="w-full px-3 py-2 border rounded-lg text-sm"></div>
+                <div>
+                    <label class="text-xs font-medium text-gray-600">Durum *</label>
+                    <select id="invInitialStatus" onchange="toggleAddDistrictFields(this.value)" class="w-full px-3 py-2 border rounded-lg text-sm">
+                        <option value="Depoda">Depoda</option>
+                        <option value="İlçe Dışı Transferde">İlçe Dışı Transferde</option>
+                        <option value="Arızalı">Arızalı</option>
+                    </select>
+                </div>
+                <div id="addDistrictFields" class="hidden space-y-3 border-t pt-2 mt-2">
+                    <div>
+                        <label class="text-xs font-medium text-gray-600">Teslim Edilen Kişi / Kurum</label>
+                        <input type="text" id="invDeliveredTo" class="w-full px-3 py-2 border rounded-lg text-sm">
+                    </div>
+                    <div>
+                        <label class="text-xs font-medium text-gray-600">Transfer Tutanak Dosyası</label>
+                        <input type="file" id="invDocument" accept="image/*,.pdf" class="w-full px-3 py-2 border rounded-lg text-xs bg-gray-50">
+                    </div>
+                </div>
+                <div class="flex justify-end space-x-2 pt-2">
+                    <button type="button" onclick="closeModal('inventoryModal')" class="px-4 py-2 bg-gray-100 text-gray-600 rounded-lg text-sm">İptal</button>
+                    <button type="submit" id="invSaveBtn" class="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg text-sm font-medium">Kaydet</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: İLÇE DIŞI TRANSFER -->
+    <div id="districtModal" class="fixed inset-0 bg-black/50 hidden z-50 flex items-center justify-center p-3 sm:p-4">
+        <div class="bg-white rounded-2xl max-w-lg w-full p-4 sm:p-6 shadow-xl max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="font-bold text-gray-800"><i class="fa-solid fa-truck-arrow-right text-purple-600 mr-2"></i>İlçe Dışı Transfer Ekle</h3>
+                <button type="button" onclick="closeModal('districtModal')"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form id="districtForm" onsubmit="handleDistrictTransferSubmit(event)" class="space-y-3">
+                <div>
+                    <label class="text-xs font-medium text-gray-600">Depodaki Yatak Seç *</label>
+                    <select id="distBedSerial" required class="w-full px-3 py-2 border rounded-lg text-sm"></select>
+                </div>
+                <div>
+                    <label class="text-xs font-medium text-gray-600">Teslim Edilen Kişi / Kurum *</label>
+                    <input type="text" id="distDeliveredTo" required placeholder="Örn: X İlçe Sağlık Mdr. / Ahmet Yılmaz" class="w-full px-3 py-2 border rounded-lg text-sm">
+                </div>
+                <div>
+                    <label class="text-xs font-medium text-gray-600">Transfer Tarihi *</label>
+                    <input type="date" id="distDate" required class="w-full px-3 py-2 border rounded-lg text-sm">
+                </div>
+                <div>
+                    <label class="text-xs font-medium text-gray-600">Transfer Tutanak Dosyası / Görseli</label>
+                    <input type="file" id="distDocument" accept="image/*,.pdf" class="w-full px-3 py-2 border rounded-lg text-xs bg-gray-50">
+                    <p class="text-[10px] text-gray-400 mt-1">İsteğe bağlı: PDF veya Görsel tutanak yükleyebilirsiniz.</p>
+                </div>
+                <div>
+                    <label class="text-xs font-medium text-gray-600">Not / Açıklama</label>
+                    <textarea id="distNotes" rows="2" placeholder="Transfer ile ilgili ek notlar..." class="w-full px-3 py-2 border rounded-lg text-sm"></textarea>
+                </div>
+                <div class="flex justify-end space-x-2 pt-2">
+                    <button type="button" onclick="closeModal('districtModal')" class="px-4 py-2 bg-gray-100 text-gray-600 rounded-lg text-sm">İptal</button>
+                    <button type="submit" class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-medium">Transferi Kaydet</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: RAPORLAR -->
+    <div id="reportModal" class="fixed inset-0 bg-black/50 hidden z-50 flex items-center justify-center p-3 sm:p-4">
+        <div class="bg-white rounded-2xl max-w-4xl w-full p-4 sm:p-6 shadow-xl max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-4 no-print">
+                <h3 class="text-base sm:text-lg font-bold text-gray-800"><i class="fa-solid fa-file-pdf text-amber-600 mr-2"></i>Rapor ve Çıktı Türü Seçimi</h3>
+                <button type="button" onclick="closeModal('reportModal')" class="text-gray-400 hover:text-gray-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <div class="bg-gray-50 p-3 sm:p-4 rounded-xl border mb-6 no-print flex flex-col sm:flex-row gap-3 items-center justify-between">
+                <span class="text-xs font-bold text-gray-600 uppercase">Çıktı Alınacak Kategori:</span>
+                <div class="flex flex-wrap gap-1.5 w-full sm:w-auto">
+                    <button type="button" onclick="selectReportType('all')" id="repBtn-all" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-teal-600 text-white transition flex-1 sm:flex-none">Tümü</button>
+                    <button type="button" onclick="selectReportType('depot')" id="repBtn-depot" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white text-gray-700 border hover:bg-gray-100 transition flex-1 sm:flex-none">Depo</button>
+                    <button type="button" onclick="selectReportType('active')" id="repBtn-active" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white text-gray-700 border hover:bg-gray-100 transition flex-1 sm:flex-none">Emanet</button>
+                    <button type="button" onclick="selectReportType('district')" id="repBtn-district" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white text-gray-700 border hover:bg-gray-100 transition flex-1 sm:flex-none">İlçe Dışı Transfer</button>
+                    <button type="button" onclick="selectReportType('broken')" id="repBtn-broken" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white text-gray-700 border hover:bg-gray-100 transition flex-1 sm:flex-none">Arızalı</button>
+                </div>
+            </div>
+            <div id="printableArea" class="space-y-6 bg-white p-2">
+                <div class="border-b pb-4 text-center">
+                    <h2 class="text-base sm:text-xl font-bold text-gray-800" id="reportTitleMain">HASTA YATAĞI GENEL DURUM VE ENVANTER RAPORU</h2>
+                    <p class="text-xs text-gray-500 mt-1">Rapor Tarihi: <span id="reportDate"></span></p>
+                </div>
+                <div id="sec-depot" class="report-section active-report space-y-2">
+                    <h4 class="text-xs sm:text-sm font-bold text-emerald-700 border-b pb-1"><i class="fa-solid fa-warehouse"></i> Depoda Bulunan Yataklar</h4>
+                    <table class="w-full text-left text-xs border"><thead><tr class="bg-emerald-50 border-b"><th class="p-2">Seri No</th><th class="p-2">Model</th><th class="p-2">Tarih</th></tr></thead><tbody id="repDepotTable"></tbody></table>
+                </div>
+                <div id="sec-active" class="report-section active-report space-y-2">
+                    <h4 class="text-xs sm:text-sm font-bold text-blue-700 border-b pb-1"><i class="fa-solid fa-hospital-user"></i> Emanetteki Yataklar</h4>
+                    <table class="w-full text-left text-xs border"><thead><tr class="bg-blue-50 border-b"><th class="p-2">Seri No</th><th class="p-2">Hasta Adı</th><th class="p-2">Telefon</th><th class="p-2">Teslim</th></tr></thead><tbody id="repActiveTable"></tbody></table>
+                </div>
+                <div id="sec-district" class="report-section active-report space-y-2">
+                    <h4 class="text-xs sm:text-sm font-bold text-purple-700 border-b pb-1"><i class="fa-solid fa-truck-arrow-right"></i> İlçe Dışı Transferdeki Yataklar</h4>
+                    <table class="w-full text-left text-xs border"><thead><tr class="bg-purple-50 border-b"><th class="p-2">Seri No</th><th class="p-2">Teslim Edilen Kişi / Kurum</th><th class="p-2">Tarih</th></tr></thead><tbody id="repDistrictTable"></tbody></table>
+                </div>
+                <div id="sec-broken" class="report-section active-report space-y-2">
+                    <h4 class="text-xs sm:text-sm font-bold text-amber-700 border-b pb-1"><i class="fa-solid fa-triangle-exclamation"></i> Arızalı Yataklar</h4>
+                    <table class="w-full text-left text-xs border"><thead><tr class="bg-amber-50 border-b"><th class="p-2">Seri No</th><th class="p-2">Model</th></tr></thead><tbody id="repBrokenTable"></tbody></table>
+                </div>
+            </div>
+            <div class="flex justify-end gap-2 pt-6 border-t mt-4 no-print">
+                <button type="button" onclick="closeModal('reportModal')" class="px-4 py-2 bg-gray-100 text-gray-600 rounded-lg text-sm">Kapat</button>
+                <button type="button" onclick="window.print()" class="px-4 py-2 bg-amber-600 text-white rounded-lg text-sm"><i class="fa-solid fa-print"></i> Yazdır</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: YENİ BAŞVURU -->
+    <div id="appModal" class="fixed inset-0 bg-black/50 hidden z-50 flex items-center justify-center p-3 sm:p-4">
+        <div class="bg-white rounded-2xl max-w-lg w-full p-4 sm:p-6 shadow-xl max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-4"><h3 class="font-bold text-gray-800">Yeni Yatak Başvurusu</h3><button type="button" onclick="closeModal('appModal')"><i class="fa-solid fa-xmark"></i></button></div>
+            <form id="appForm" onsubmit="handleAppSubmit(event)" class="space-y-3">
+                <div class="grid grid-cols-2 gap-2">
+                    <div><label class="text-xs">Hasta Adı *</label><input type="text" id="appName" required class="w-full px-3 py-2 border rounded-lg text-sm"></div>
+                    <div><label class="text-xs">TC No *</label><input type="text" id="appTc" maxlength="11" required class="w-full px-3 py-2 border rounded-lg text-sm"></div>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div><label class="text-xs">Telefon *</label><input type="text" id="appPhone" required class="w-full px-3 py-2 border rounded-lg text-sm"></div>
+                    <div><label class="text-xs">Başvuru Tarihi *</label><input type="date" id="appDate" required class="w-full px-3 py-2 border rounded-lg text-sm"></div>
+                </div>
+                <div><label class="text-xs">Adres *</label><textarea id="appAddress" required rows="2" class="w-full px-3 py-2 border rounded-lg text-sm"></textarea></div>
+                <div><label class="text-xs">Notlar</label><input type="text" id="appNotes" class="w-full px-3 py-2 border rounded-lg text-sm"></div>
+                <div class="flex justify-end pt-2"><button type="submit" class="px-4 py-2 bg-teal-600 text-white rounded-lg text-sm">Kaydet</button></div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: ONAYLA -->
+    <div id="approveModal" class="fixed inset-0 bg-black/50 hidden z-50 flex items-center justify-center p-3 sm:p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full p-4 sm:p-6 shadow-xl">
+            <div class="flex justify-between items-center mb-4"><h3 class="font-bold text-gray-800">Başvuruyu Onayla</h3><button type="button" onclick="closeModal('approveModal')"><i class="fa-solid fa-xmark"></i></button></div>
+            <form id="approveForm" onsubmit="handleAppApproval(event)" class="space-y-4">
+                <input type="hidden" id="approveAppDocId">
+                <p class="text-xs text-gray-500">Hasta: <b id="approvePatientName"></b></p>
+                <div><label class="text-xs">Depodaki Yatak Seç</label><select id="approveBedSerial" required class="w-full px-3 py-2 border rounded-lg text-sm"></select></div>
+                <div><label class="text-xs">Teslim Tarihi</label><input type="date" id="approveDeliveryDate" required class="w-full px-3 py-2 border rounded-lg text-sm"></div>
+                <div class="flex justify-end pt-2"><button type="submit" class="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm">Onayla ve Teslim Et</button></div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: İADE AL -->
+    <div id="returnModal" class="fixed inset-0 bg-black/50 hidden z-50 flex items-center justify-center p-3 sm:p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full p-4 sm:p-6 shadow-xl">
+            <div class="flex justify-between items-center mb-4"><h3 class="font-bold text-gray-800">Yatağı İade Al</h3><button type="button" onclick="closeModal('returnModal')"><i class="fa-solid fa-xmark"></i></button></div>
+            <form id="returnForm" onsubmit="handleReturnSubmit(event)" class="space-y-4">
+                <input type="hidden" id="returnPatientDocId">
+                <input type="hidden" id="returnBedSerialVal">
+                <p class="text-xs text-gray-500">Hasta: <b id="returnPatientName"></b> | Yatak: <b id="returnBedDisplay"></b></p>
+                <div><label class="text-xs">İade Nedeni</label><select id="returnReason" class="w-full px-3 py-2 border rounded-lg text-sm"><option value="Vefat Nedeniyle">Vefat Nedeniyle</option><option value="İyileşme">İyileşme</option><option value="Diğer">Diğer</option></select></div>
+                <div>
+                    <label class="text-xs">Depo Durumu</label>
+                    <select id="returnBedStatus" class="w-full px-3 py-2 border rounded-lg text-sm">
+                        <option value="Depoda">Sağlam (Depoya Al)</option>
+                        <option value="İlçe Dışı Transferde">İlçe Dışı Transferde</option>
+                        <option value="Arızalı">Arızalı</option>
+                    </select>
+                </div>
+                <div><label class="text-xs">İade Tarihi</label><input type="date" id="returnDate" required class="w-full px-3 py-2 border rounded-lg text-sm"></div>
+                <div class="flex justify-end pt-2"><button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm">İadeyi Tamamla</button></div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: AKTİF HASTA DÜZENLE -->
+    <div id="editActiveModal" class="fixed inset-0 bg-black/50 hidden z-50 flex items-center justify-center p-3 sm:p-4">
+        <div class="bg-white rounded-2xl max-w-lg w-full p-4 sm:p-6 shadow-xl max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-4"><h3 class="font-bold text-gray-800">Aktif Hasta Bilgilerini Düzenle</h3><button type="button" onclick="closeModal('editActiveModal')"><i class="fa-solid fa-xmark"></i></button></div>
+            <form id="editActiveForm" onsubmit="handleEditActiveSubmit(event)" class="space-y-3">
+                <input type="hidden" id="editActiveId">
+                <div class="grid grid-cols-2 gap-2">
+                    <div><label class="text-xs">Hasta Adı *</label><input type="text" id="editActiveName" required class="w-full px-3 py-2 border rounded-lg text-sm"></div>
+                    <div><label class="text-xs">TC No *</label><input type="text" id="editActiveTc" maxlength="11" required class="w-full px-3 py-2 border rounded-lg text-sm"></div>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div><label class="text-xs">Telefon *</label><input type="text" id="editActivePhone" required class="w-full px-3 py-2 border rounded-lg text-sm"></div>
+                    <div><label class="text-xs">Teslim Tarihi *</label><input type="date" id="editActiveDate" required class="w-full px-3 py-2 border rounded-lg text-sm"></div>
+                </div>
+                <div><label class="text-xs">Yatak Seri No</label><input type="text" id="editActiveSerial" disabled class="w-full px-3 py-2 border rounded-lg text-sm bg-gray-100 text-gray-500"></div>
+                <div><label class="text-xs">Adres *</label><textarea id="editActiveAddress" required rows="2" class="w-full px-3 py-2 border rounded-lg text-sm"></textarea></div>
+                <div class="flex justify-end pt-2"><button type="submit" class="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm">Değişiklikleri Kaydet</button></div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: YATAK ENVANTERİ DÜZENLE -->
+    <div id="editInventoryModal" class="fixed inset-0 bg-black/50 hidden z-50 flex items-center justify-center p-3 sm:p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full p-4 sm:p-6 shadow-xl max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-4"><h3 class="font-bold text-gray-800">Yatak Bilgilerini Düzenle</h3><button type="button" onclick="closeModal('editInventoryModal')"><i class="fa-solid fa-xmark"></i></button></div>
+            <form id="editInventoryForm" onsubmit="handleEditInventorySubmit(event)" class="space-y-3">
+                <input type="hidden" id="editInvId">
+                <div><label class="text-xs font-medium text-gray-600">Seri Numarası *</label><input type="text" id="editInvSerialNo" required class="w-full px-3 py-2 border rounded-lg text-sm"></div>
+                <div><label class="text-xs font-medium text-gray-600">Model</label><input type="text" id="editInvModel" class="w-full px-3 py-2 border rounded-lg text-sm"></div>
+                <div>
+                    <label class="text-xs font-medium text-gray-600">Durum *</label>
+                    <select id="editInvStatus" onchange="toggleEditDistrictFields(this.value)" class="w-full px-3 py-2 border rounded-lg text-sm">
+                        <option value="Depoda">Depoda</option>
+                        <option value="Hastada">Hastada</option>
+                        <option value="İlçe Dışı Transferde">İlçe Dışı Transferde</option>
+                        <option value="Arızalı">Arızalı</option>
+                    </select>
+                </div>
+                <div id="editDistrictFields" class="hidden space-y-3 border-t pt-2 mt-2">
+                    <div>
+                        <label class="text-xs font-medium text-gray-600">Teslim Edilen Kişi / Kurum</label>
+                        <input type="text" id="editInvDeliveredTo" class="w-full px-3 py-2 border rounded-lg text-sm">
+                    </div>
+                    <div>
+                        <label class="text-xs font-medium text-gray-600">Transfer Tutanak Dosyası</label>
+                        <input type="file" id="editInvDocument" accept="image/*,.pdf" class="w-full px-3 py-2 border rounded-lg text-xs bg-gray-50">
+                        <div id="editInvDocPreview" class="mt-1 text-xs"></div>
+                    </div>
+                </div>
+                <div class="flex justify-end space-x-2 pt-2"><button type="submit" class="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm">Değişiklikleri Kaydet</button></div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: BAŞVURU DÜZENLE -->
+    <div id="editAppModal" class="fixed inset-0 bg-black/50 hidden z-50 flex items-center justify-center p-3 sm:p-4">
+        <div class="bg-white rounded-2xl max-w-lg w-full p-4 sm:p-6 shadow-xl max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-4"><h3 class="font-bold text-gray-800">Başvuru Bilgilerini Düzenle</h3><button type="button" onclick="closeModal('editAppModal')"><i class="fa-solid fa-xmark"></i></button></div>
+            <form id="editAppForm" onsubmit="handleEditAppSubmit(event)" class="space-y-3">
+                <input type="hidden" id="editAppId">
+                <div class="grid grid-cols-2 gap-2">
+                    <div><label class="text-xs">Hasta Adı *</label><input type="text" id="editAppName" required class="w-full px-3 py-2 border rounded-lg text-sm"></div>
+                    <div><label class="text-xs">TC No *</label><input type="text" id="editAppTc" maxlength="11" required class="w-full px-3 py-2 border rounded-lg text-sm"></div>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div><label class="text-xs">Telefon *</label><input type="text" id="editAppPhone" required class="w-full px-3 py-2 border rounded-lg text-sm"></div>
+                    <div><label class="text-xs">Başvuru Tarihi *</label><input type="date" id="editAppDate" required class="w-full px-3 py-2 border rounded-lg text-sm"></div>
+                </div>
+                <div><label class="text-xs">Adres *</label><textarea id="editAppAddress" required rows="2" class="w-full px-3 py-2 border rounded-lg text-sm"></textarea></div>
+                <div><label class="text-xs">Notlar</label><input type="text" id="editAppNotes" class="w-full px-3 py-2 border rounded-lg text-sm"></div>
+                <div class="flex justify-end pt-2"><button type="submit" class="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm">Değişiklikleri Kaydet</button></div>
+            </form>
+        </div>
+    </div>
+
+    <!-- JAVASCRIPT / FİREBASE İŞLEMLERİ -->
+    <script>
+        let inventory = [], activePatients = [], applications = [], archive = [];
+        let currentInventoryFilter = 'all', currentReportType = 'all';
+
+        async function initializeAppUI() {
+            if(document.getElementById('appDate')) document.getElementById('appDate').valueAsDate = new Date();
+            if(document.getElementById('approveDeliveryDate')) document.getElementById('approveDeliveryDate').valueAsDate = new Date();
+            if(document.getElementById('returnDate')) document.getElementById('returnDate').valueAsDate = new Date();
+            if(document.getElementById('distDate')) document.getElementById('distDate').valueAsDate = new Date();
+            await loadAllDataFromFirebase();
+        }
+
+        async function loadAllDataFromFirebase() {
+            try {
+                if (!window.db) return;
+                let invSnap = await getDocs(collection(window.db, "inventory"));
+                inventory = [];
+                invSnap.forEach(d => inventory.push({ id: d.id, ...d.data() }));
+
+                let actSnap = await getDocs(collection(window.db, "activePatients"));
+                activePatients = [];
+                actSnap.forEach(d => activePatients.push({ id: d.id, ...d.data() }));
+
+                let appSnap = await getDocs(collection(window.db, "applications"));
+                applications = [];
+                appSnap.forEach(d => applications.push({ id: d.id, ...d.data() }));
+
+                let arcSnap = await getDocs(collection(window.db, "archive"));
+                archive = [];
+                arcSnap.forEach(d => archive.push({ id: d.id, ...d.data() }));
+
+                refreshAllViews();
+            } catch (err) {
+                console.error("Veri yüklenirken hata oluştu:", err);
+            }
+        }
+
+        function refreshAllViews() {
+            updateStats();
+            renderActivePatients();
+            renderInventory();
+            renderApplications();
+            renderArchive();
+            updateReportData();
+        }
+
+        function updateStats() {
+            document.getElementById('statTotal').innerText = inventory.length;
+            document.getElementById('statDepot').innerText = inventory.filter(i => i.status === 'Depoda').length;
+            document.getElementById('statOutside').innerText = inventory.filter(i => i.status === 'Hastada').length;
+            document.getElementById('statDistrict').innerText = inventory.filter(i => i.status === 'İlçe Dışı Transferde').length;
+            document.getElementById('statBroken').innerText = inventory.filter(i => i.status === 'Arızalı').length;
+            document.getElementById('statPending').innerText = applications.length;
+            document.getElementById('statArchive').innerText = archive.length;
+
+            document.getElementById('countActive').innerText = activePatients.length;
+            document.getElementById('countInventory').innerText = inventory.length;
+            document.getElementById('countPending').innerText = applications.length;
+            document.getElementById('countArchive').innerText = archive.length;
+        }
+
+        function switchTab(tabName) {
+            ['active', 'inventory', 'applications', 'archive'].forEach(t => {
+                document.getElementById('tab-' + t).classList.add('hidden');
+                document.getElementById('tabBtn-' + t).className = "py-3 px-4 border-b-2 font-medium text-xs sm:text-sm transition text-gray-500 border-transparent hover:text-gray-700 whitespace-nowrap flex items-center gap-2";
+            });
+            document.getElementById('tab-' + tabName).classList.remove('hidden');
+            document.getElementById('tabBtn-' + tabName).className = "py-3 px-4 border-b-2 font-medium text-xs sm:text-sm transition text-teal-600 border-teal-600 whitespace-nowrap flex items-center gap-2";
+        }
+
+        function openModal(id) { 
+            if(id === 'reportModal') updateReportData(); 
+            if(id === 'districtModal') populateDistrictDepotBeds();
+            document.getElementById(id).classList.remove('hidden'); 
+        }
+        function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+
+        function fileToBase64(file) {
+            return new Promise((resolve, reject) => {
+                if(!file) resolve(null);
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = error => reject(error);
+            });
+        }
+
+        function toggleAddDistrictFields(val) {
+            const container = document.getElementById('addDistrictFields');
+            if(val === 'İlçe Dışı Transferde') {
+                container.classList.remove('hidden');
+            } else {
+                container.classList.add('hidden');
+            }
+        }
+
+        function toggleEditDistrictFields(val) {
+            const container = document.getElementById('editDistrictFields');
+            if(val === 'İlçe Dışı Transferde') {
+                container.classList.remove('hidden');
+            } else {
+                container.classList.add('hidden');
+            }
+        }
+
+        function renderActivePatients() {
+            let query = document.getElementById('searchActive').value.toLowerCase();
+            let tbody = document.getElementById('activePatientsTable');
+            tbody.innerHTML = '';
+            let filtered = activePatients.filter(p => p.name.toLowerCase().includes(query) || p.tc.includes(query) || p.serialNo.toLowerCase().includes(query));
+            if(filtered.length === 0) { tbody.innerHTML = `<tr><td colspan="6" class="p-6 text-center text-gray-400">Kayıt bulunamadı.</td></tr>`; return; }
+            filtered.forEach(p => {
+                tbody.innerHTML += `
+                    <tr class="hover:bg-gray-50/50">
+                        <td class="p-3 sm:p-4 font-medium">${p.name}<br><span class="text-xs text-gray-400">TC: ${p.tc}</span></td>
+                        <td class="p-3 sm:p-4 text-gray-600">${p.phone}</td>
+                        <td class="p-3 sm:p-4"><span class="bg-blue-50 text-blue-700 px-2 py-1 rounded text-xs font-semibold">${p.serialNo}</span></td>
+                        <td class="p-3 sm:p-4 text-gray-600">${p.deliveryDate}</td>
+                        <td class="p-3 sm:p-4 text-gray-500 text-xs">${p.address}</td>
+                        <td class="p-3 sm:p-4 text-right space-x-1">
+                            <button type="button" onclick="openReturnModal('${p.id}')" class="bg-amber-50 text-amber-700 px-2.5 py-1.5 rounded-lg text-xs" title="İade Al"><i class="fa-solid fa-box-open"></i></button>
+                            <button type="button" onclick="openEditActiveModal('${p.id}')" class="bg-emerald-50 text-emerald-700 px-2.5 py-1.5 rounded-lg text-xs" title="Düzenle"><i class="fa-solid fa-pen-to-square"></i> Düzenle</button>
+                            <button type="button" onclick="deleteDocItem('activePatients', '${p.id}')" class="bg-red-50 text-red-600 px-2.5 py-1.5 rounded-lg text-xs" title="Sil"><i class="fa-solid fa-trash"></i></button>
+                        </td>
+                    </tr>`;
+            });
+        }
+
+        function renderInventory() {
+            let query = document.getElementById('searchInventory').value.toLowerCase();
+            let tbody = document.getElementById('inventoryTable');
+            tbody.innerHTML = '';
+            let filtered = inventory.filter(i => {
+                let matchQuery = i.serialNo.toLowerCase().includes(query) || i.model.toLowerCase().includes(query) || (i.deliveredTo && i.deliveredTo.toLowerCase().includes(query));
+                let matchStatus = currentInventoryFilter === 'all' || i.status === currentInventoryFilter;
+                return matchQuery && matchStatus;
+            });
+            if(filtered.length === 0) { tbody.innerHTML = `<tr><td colspan="5" class="p-6 text-center text-gray-400">Kayıt bulunamadı.</td></tr>`; return; }
+            filtered.forEach(item => {
+                let badge = item.status === 'Depoda' ? `<span class="bg-emerald-50 text-emerald-700 px-2 py-1 rounded text-xs font-medium">Depoda</span>` :
+                            item.status === 'Hastada' ? `<span class="bg-blue-50 text-blue-700 px-2 py-1 rounded text-xs font-medium">Hastada</span>` :
+                            item.status === 'İlçe Dışı Transferde' ? `<span class="bg-purple-50 text-purple-700 px-2 py-1 rounded text-xs font-medium">İlçe Dışı Transferde</span>` :
+                            `<span class="bg-amber-50 text-amber-700 px-2 py-1 rounded text-xs font-medium">Arızalı</span>`;
+                
+                let transferDetails = '';
+                if(item.status === 'İlçe Dışı Transferde') {
+                    transferDetails = `<div class="text-xs text-purple-800 mt-1"><b>Teslim:</b> ${item.deliveredTo || 'Belirtilmedi'}</div>`;
+                    if(item.documentData) {
+                        transferDetails += `<div class="mt-1"><a href="${item.documentData}" target="_blank" class="text-xs text-teal-600 hover:underline flex items-center gap-1"><i class="fa-solid fa-file-lines"></i> Tutanağı Görüntüle</a></div>`;
+                    }
+                }
+
+                tbody.innerHTML += `
+                    <tr class="hover:bg-gray-50/50">
+                        <td class="p-3 sm:p-4 font-semibold">${item.serialNo}</td>
+                        <td class="p-3 sm:p-4 text-gray-600">${item.model || '-'}</td>
+                        <td class="p-3 sm:p-4">${badge}${transferDetails}</td>
+                        <td class="p-3 sm:p-4 text-gray-500 text-xs">${item.date}</td>
+                        <td class="p-3 sm:p-4 text-right space-x-1">
+                            <button type="button" onclick="openEditInventoryModal('${item.id}')" class="bg-emerald-50 text-emerald-700 px-2.5 py-1.5 rounded-lg text-xs" title="Düzenle"><i class="fa-solid fa-pen-to-square"></i> Düzenle</button>
+                            <button type="button" onclick="deleteDocItem('inventory', '${item.id}')" class="bg-red-50 text-red-600 px-2.5 py-1.5 rounded-lg text-xs" title="Sil"><i class="fa-solid fa-trash"></i></button>
+                        </td>
+                    </tr>`;
+            });
+        }
+
+        function filterInventoryStatus(status) { currentInventoryFilter = status; renderInventory(); }
+
+        function renderApplications() {
+            let tbody = document.getElementById('applicationsTable');
+            tbody.innerHTML = '';
+            if(applications.length === 0) { tbody.innerHTML = `<tr><td colspan="5" class="p-6 text-center text-gray-400">Bekleyen başvuru yok.</td></tr>`; return; }
+            applications.forEach(app => {
+                tbody.innerHTML += `
+                    <tr class="hover:bg-gray-50/50">
+                        <td class="p-3 sm:p-4 font-medium">${app.name}<br><span class="text-xs text-gray-400">TC: ${app.tc}</span></td>
+                        <td class="p-3 sm:p-4 text-gray-600 text-xs">${app.phone}<br>${app.address}</td>
+                        <td class="p-3 sm:p-4 text-gray-600">${app.date}</td>
+                        <td class="p-3 sm:p-4 text-gray-500 text-xs">${app.notes || '-'}</td>
+                        <td class="p-3 sm:p-4 text-right space-x-1">
+                            <button type="button" onclick="openApproveModal('${app.id}')" class="bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-xs"><i class="fa-solid fa-check"></i> Onayla</button>
+                            <button type="button" onclick="openEditAppModal('${app.id}')" class="bg-emerald-50 text-emerald-700 px-2.5 py-1.5 rounded-lg text-xs" title="Düzenle"><i class="fa-solid fa-pen-to-square"></i> Düzenle</button>
+                            <button type="button" onclick="deleteDocItem('applications', '${app.id}')" class="bg-red-50 text-red-600 px-2.5 py-1.5 rounded-lg text-xs" title="Sil"><i class="fa-solid fa-trash"></i></button>
+                        </td>
+                    </tr>`;
+            });
+        }
+
+        function renderArchive() {
+            let tbody = document.getElementById('archiveTable');
+            tbody.innerHTML = '';
+            if(archive.length === 0) { tbody.innerHTML = `<tr><td colspan="6" class="p-6 text-center text-gray-400">Arşiv boş.</td></tr>`; return; }
+            archive.forEach(item => {
+                tbody.innerHTML += `
+                    <tr class="hover:bg-gray-50/50">
+                        <td class="p-3 sm:p-4 font-medium">${item.name}<br><span class="text-xs text-gray-400">TC: ${item.tc}</span></td>
+                        <td class="p-3 sm:p-4">${item.serialNo}</td>
+                        <td class="p-3 sm:p-4 text-gray-600 font-medium">${item.durationDays} Gün</td>
+                        <td class="p-3 sm:p-4"><span class="bg-amber-50 text-amber-700 px-2 py-0.5 rounded text-xs">${item.reason}</span></td>
+                        <td class="p-3 sm:p-4 text-gray-500 text-xs">${item.returnDate}</td>
+                        <td class="p-3 sm:p-4 text-right">
+                            <button type="button" onclick="deleteDocItem('archive', '${item.id}')" class="bg-red-50 text-red-600 px-2.5 py-1.5 rounded-lg text-xs" title="Sil"><i class="fa-solid fa-trash"></i></button>
+                        </td>
+                    </tr>`;
+            });
+        }
+
+        function selectReportType(type) {
+            currentReportType = type;
+            document.getElementById('reportDate').innerText = new Date().toLocaleDateString('tr-TR');
+            ['all', 'depot', 'active', 'district', 'broken'].forEach(t => {
+                let btn = document.getElementById('repBtn-' + t);
+                btn.className = t === type ? "px-3 py-1.5 rounded-lg text-xs font-semibold bg-teal-600 text-white transition flex-1 sm:flex-none" : "px-3 py-1.5 rounded-lg text-xs font-semibold bg-white text-gray-700 border hover:bg-gray-100 transition flex-1 sm:flex-none";
+            });
+            document.getElementById('sec-depot').classList.toggle('active-report', type === 'all' || type === 'depot');
+            document.getElementById('sec-active').classList.toggle('active-report', type === 'all' || type === 'active');
+            document.getElementById('sec-district').classList.toggle('active-report', type === 'all' || type === 'district');
+            document.getElementById('sec-broken').classList.toggle('active-report', type === 'all' || type === 'broken');
+        }
+
+        function updateReportData() {
+            selectReportType(currentReportType);
+            document.getElementById('repDepotTable').innerHTML = inventory.filter(i => i.status === 'Depoda').map(b => `<tr class="border-b"><td class="p-2">${b.serialNo}</td><td class="p-2">${b.model}</td><td class="p-2">${b.date}</td></tr>`).join('') || `<tr><td colspan="3" class="p-2 text-center text-gray-400">Kayıt yok</td></tr>`;
+            document.getElementById('repActiveTable').innerHTML = activePatients.map(p => `<tr class="border-b"><td class="p-2">${p.serialNo}</td><td class="p-2">${p.name}</td><td class="p-2">${p.phone}</td><td class="p-2">${p.deliveryDate}</td></tr>`).join('') || `<tr><td colspan="4" class="p-2 text-center text-gray-400">Kayıt yok</td></tr>`;
+            document.getElementById('repDistrictTable').innerHTML = inventory.filter(i => i.status === 'İlçe Dışı Transferde').map(b => `<tr class="border-b"><td class="p-2">${b.serialNo}</td><td class="p-2">${b.deliveredTo || '-'}</td><td class="p-2">${b.date}</td></tr>`).join('') || `<tr><td colspan="3" class="p-2 text-center text-gray-400">Kayıt yok</td></tr>`;
+            document.getElementById('repBrokenTable').innerHTML = inventory.filter(i => i.status === 'Arızalı').map(b => `<tr class="border-b"><td class="p-2">${b.serialNo}</td><td class="p-2">${b.model}</td></tr>`).join('') || `<tr><td colspan="2" class="p-2 text-center text-gray-400">Kayıt yok</td></tr>`;
+        }
+
+        function populateDistrictDepotBeds() {
+            let select = document.getElementById('distBedSerial');
+            select.innerHTML = inventory.filter(i => i.status === 'Depoda').map(b => `<option value="${b.id}">${b.serialNo} - ${b.model}</option>`).join('') || `<option value="">Depoda kullanılabilir yatak yok!</option>`;
+        }
+
+        async function handleDistrictTransferSubmit(e) {
+            e.preventDefault();
+            let bedId = document.getElementById('distBedSerial').value;
+            if(!bedId) { alert("Lütfen depodan bir yatak seçin."); return; }
+
+            let deliveredTo = document.getElementById('distDeliveredTo').value.trim();
+            let transferDate = document.getElementById('distDate').value;
+            let notes = document.getElementById('distNotes').value.trim();
+            let fileInput = document.getElementById('distDocument');
+            
+            let documentData = null;
+            if(fileInput && fileInput.files.length > 0) {
+                documentData = await fileToBase64(fileInput.files[0]);
+            }
+
+            let updatePayload = {
+                status: 'İlçe Dışı Transferde',
+                deliveredTo: deliveredTo,
+                date: transferDate,
+                notes: notes
+            };
+            if(documentData) updatePayload.documentData = documentData;
+
+            await updateDoc(doc(window.db, "inventory", bedId), updatePayload);
+
+            closeModal('districtModal');
+            document.getElementById('districtForm').reset();
+            await loadAllDataFromFirebase();
+        }
+
+        // Gelişmiş Hata Yakalamalı Yatak Ekleme Fonksiyonu
+        async function handleInventorySubmit(e) {
+            e.preventDefault();
+            let saveBtn = document.getElementById('invSaveBtn');
+            saveBtn.disabled = true;
+            saveBtn.innerText = "Kaydediliyor...";
+
+            try {
+                let serialNo = document.getElementById('invSerialNo').value.trim();
+                let status = document.getElementById('invInitialStatus').value;
+
+                let payload = {
+                    serialNo: serialNo,
+                    model: document.getElementById('invModel').value.trim() || 'Standart',
+                    status: status,
+                    date: new Date().toISOString().split('T')[0]
+                };
+
+                if(status === 'İlçe Dışı Transferde') {
+                    payload.deliveredTo = (document.getElementById('invDeliveredTo').value || '').trim();
+                    let fileInput = document.getElementById('invDocument');
+                    if(fileInput && fileInput.files.length > 0) {
+                        payload.documentData = await fileToBase64(fileInput.files[0]);
+                    }
+                }
+
+                await addDoc(collection(window.db, "inventory"), payload);
+                closeModal('inventoryModal');
+                document.getElementById('inventoryForm').reset();
+                document.getElementById('addDistrictFields').classList.add('hidden');
+                await loadAllDataFromFirebase();
+            } catch (error) {
+                console.error("Firebase Kayıt Hatası Detayı:", error);
+                alert("Kayıt başarısız! Hata: " + error.message);
+            } finally {
+                saveBtn.disabled = false;
+                saveBtn.innerText = "Kaydet";
+            }
+        }
+
+        async function handleAppSubmit(e) {
+            e.preventDefault();
+            await addDoc(collection(window.db, "applications"), {
+                name: document.getElementById('appName').value,
+                tc: document.getElementById('appTc').value,
+                phone: document.getElementById('appPhone').value,
+                date: document.getElementById('appDate').value,
+                address: document.getElementById('appAddress').value,
+                notes: document.getElementById('appNotes').value
+            });
+            closeModal('appModal');
+            document.getElementById('appForm').reset();
+            await loadAllDataFromFirebase();
+        }
+
+        function openApproveModal(appId) {
+            let app = applications.find(a => a.id === appId);
+            if(!app) return;
+            document.getElementById('approveAppDocId').value = app.id;
+            document.getElementById('approvePatientName').innerText = app.name;
+            let select = document.getElementById('approveBedSerial');
+            select.innerHTML = inventory.filter(i => i.status === 'Depoda').map(b => `<option value="${b.id}|${b.serialNo}">${b.serialNo} - ${b.model}</option>`).join('') || `<option value="">Depoda yatak yok!</option>`;
+            openModal('approveModal');
+        }
+
+        async function handleAppApproval(e) {
+            e.preventDefault();
+            let appDocId = document.getElementById('approveAppDocId').value;
+            let bedVal = document.getElementById('approveBedSerial').value;
+            if(!bedVal) return;
+            let [bedDocId, bedSerial] = bedVal.split('|');
+
+            let app = applications.find(a => a.id === appDocId);
+            
+            await addDoc(collection(window.db, "activePatients"), {
+                name: app.name, tc: app.tc, phone: app.phone, serialNo: bedSerial,
+                deliveryDate: document.getElementById('approveDeliveryDate').value, address: app.address
+            });
+
+            await updateDoc(doc(window.db, "inventory", bedDocId), { status: 'Hastada' });
+            await deleteDoc(doc(window.db, "applications", appDocId));
+
+            closeModal('approveModal');
+            await loadAllDataFromFirebase();
+        }
+
+        function openReturnModal(patientId) {
+            let p = activePatients.find(x => x.id === patientId);
+            if(!p) return;
+            document.getElementById('returnPatientDocId').value = p.id;
+            document.getElementById('returnBedSerialVal').value = p.serialNo;
+            document.getElementById('returnPatientName').innerText = p.name;
+            document.getElementById('returnBedDisplay').innerText = p.serialNo;
+            openModal('returnModal');
+        }
+
+        async function handleReturnSubmit(e) {
+            e.preventDefault();
+            let patientDocId = document.getElementById('returnPatientDocId').value;
+            let bedSerial = document.getElementById('returnBedSerialVal').value;
+            let returnDate = document.getElementById('returnDate').value;
+
+            let patient = activePatients.find(p => p.id === patientDocId);
+            let diffDays = Math.ceil(Math.abs(new Date(returnDate) - new Date(patient.deliveryDate)) / (1000 * 60 * 60 * 24));
+
+            await addDoc(collection(window.db, "archive"), {
+                name: patient.name, tc: patient.tc, serialNo: bedSerial,
+                durationDays: isNaN(diffDays) ? 0 : diffDays,
+                reason: document.getElementById('returnReason').value,
+                returnDate: returnDate
+            });
+
+            let bed = inventory.find(i => i.serialNo === bedSerial);
+            if(bed) {
+                await updateDoc(doc(window.db, "inventory", bed.id), { status: document.getElementById('returnBedStatus').value });
+            }
+
+            await deleteDoc(doc(window.db, "activePatients", patientDocId));
+
+            closeModal('returnModal');
+            await loadAllDataFromFirebase();
+        }
+
+        function openEditActiveModal(id) {
+            let p = activePatients.find(x => x.id === id);
+            if(!p) return;
+            document.getElementById('editActiveId').value = p.id;
+            document.getElementById('editActiveName').value = p.name;
+            document.getElementById('editActiveTc').value = p.tc;
+            document.getElementById('editActivePhone').value = p.phone;
+            document.getElementById('editActiveDate').value = p.deliveryDate;
+            document.getElementById('editActiveSerial').value = p.serialNo;
+            document.getElementById('editActiveAddress').value = p.address;
+            openModal('editActiveModal');
+        }
+
+        async function handleEditActiveSubmit(e) {
+            e.preventDefault();
+            let id = document.getElementById('editActiveId').value;
+            await updateDoc(doc(window.db, "activePatients", id), {
+                name: document.getElementById('editActiveName').value,
+                tc: document.getElementById('editActiveTc').value,
+                phone: document.getElementById('editActivePhone').value,
+                deliveryDate: document.getElementById('editActiveDate').value,
+                address: document.getElementById('editActiveAddress').value
+            });
+            closeModal('editActiveModal');
+            await loadAllDataFromFirebase();
+        }
+
+        function openEditInventoryModal(id) {
+            let item = inventory.find(x => x.id === id);
+            if(!item) return;
+            document.getElementById('editInvId').value = item.id;
+            document.getElementById('editInvSerialNo').value = item.serialNo;
+            document.getElementById('editInvModel').value = item.model || '';
+            document.getElementById('editInvStatus').value = item.status;
+            document.getElementById('editInvDeliveredTo').value = item.deliveredTo || '';
+            
+            const docPrev = document.getElementById('editInvDocPreview');
+            if(item.documentData) {
+                docPrev.innerHTML = `<a href="${item.documentData}" target="_blank" class="text-teal-600 underline"><i class="fa-solid fa-file-lines"></i> Mevcut Tutanağı Aç</a>`;
+            } else {
+                docPrev.innerHTML = '<span class="text-gray-400">Tutanak dosyası yok.</span>';
+            }
+
+            toggleEditDistrictFields(item.status);
+            openModal('editInventoryModal');
+        }
+
+        async function handleEditInventorySubmit(e) {
+            e.preventDefault();
+            let id = document.getElementById('editInvId').value;
+            let status = document.getElementById('editInvStatus').value;
+
+            let updatePayload = {
+                serialNo: document.getElementById('editInvSerialNo').value.trim(),
+                model: document.getElementById('editInvModel').value.trim(),
+                status: status
+            };
+
+            if(status === 'İlçe Dışı Transferde') {
+                updatePayload.deliveredTo = document.getElementById('editInvDeliveredTo').value.trim();
+                let fileInput = document.getElementById('editInvDocument');
+                if(fileInput && fileInput.files.length > 0) {
+                    updatePayload.documentData = await fileToBase64(fileInput.files[0]);
+                }
+            }
+
+            await updateDoc(doc(window.db, "inventory", id), updatePayload);
+            closeModal('editInventoryModal');
+            await loadAllDataFromFirebase();
+        }
+
+        function openEditAppModal(id) {
+            let app = applications.find(x => x.id === id);
+            if(!app) return;
+            document.getElementById('editAppId').value = app.id;
+            document.getElementById('editAppName').value = app.name;
+            document.getElementById('editAppTc').value = app.tc;
+            document.getElementById('editAppPhone').value = app.phone;
+            document.getElementById('editAppDate').value = app.date;
+            document.getElementById('editAppAddress').value = app.address;
+            document.getElementById('editAppNotes').value = app.notes || '';
+            openModal('editAppModal');
+        }
+
+        async function handleEditAppSubmit(e) {
+            e.preventDefault();
+            let id = document.getElementById('editAppId').value;
+            await updateDoc(doc(window.db, "applications", id), {
+                name: document.getElementById('editAppName').value,
+                tc: document.getElementById('editAppTc').value,
+                phone: document.getElementById('editAppPhone').value,
+                date: document.getElementById('editAppDate').value,
+                address: document.getElementById('editAppAddress').value,
+                notes: document.getElementById('editAppNotes').value
+            });
+            closeModal('editAppModal');
+            await loadAllDataFromFirebase();
+        }
+
+        async function deleteDocItem(collName, docId) {
+            if(confirm('Silmek istediğinize emin misiniz?')) {
+                await deleteDoc(doc(window.db, collName, docId));
+                await loadAllDataFromFirebase();
+            }
+        }
+    </script>
+</body>
+</html>
